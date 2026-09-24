@@ -1,0 +1,334 @@
+[
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "HIGH",
+    "category": "AUTHENTICATION",
+    "sourceIp": "185.220.101.34",
+    "destinationIp": "10.10.4.8",
+    "userName": "svc_backup",
+    "message": "5 consecutive failed password attempts for svc_backup over 2 minutes"
+  },
+  {
+    "eventType": "LOGIN_SUCCESS",
+    "severity": "INFO",
+    "category": "AUTHENTICATION",
+    "sourceIp": "10.20.1.12",
+    "destinationIp": "10.10.4.8",
+    "userName": "p.wells",
+    "message": "Successful interactive login"
+  },
+  {
+    "eventType": "MALWARE_DETECTED",
+    "severity": "CRITICAL",
+    "category": "ENDPOINT",
+    "sourceHost": "edr-mac-88",
+    "sourceIp": "10.20.17.22",
+    "userName": "r.dhar",
+    "message": "Signature match: Emotet trojan drop payload quarantined"
+  },
+  {
+    "eventType": "PORT_SCAN",
+    "severity": "MEDIUM",
+    "category": "NETWORK",
+    "sourceIp": "192.168.1.25",
+    "destinationIp": "10.22.1.19",
+    "message": "Port sweep across 22,445,3389 from single host in 4 seconds"
+  },
+  {
+    "eventType": "PRIVILEGE_ESCALATION",
+    "severity": "CRITICAL",
+    "category": "IDENTITY",
+    "sourceHost": "idp-prod-3",
+    "sourceIp": "10.10.4.8",
+    "destinationIp": "10.10.4.8",
+    "userName": "svc_ldap",
+    "message": "Unexpected change of group membership: user added to Domain Admins"
+  },
+  {
+    "eventType": "DATA_EXFILTRATION",
+    "severity": "CRITICAL",
+    "category": "DATA",
+    "sourceIp": "10.20.30.41",
+    "destinationIp": "203.0.113.99",
+    "destinationPort": 443,
+    "userName": "s.katz",
+    "message": "42 MB uploaded to unknown external IP within 60 seconds"
+  },
+  {
+    "eventType": "COMMAND_SHELL",
+    "severity": "HIGH",
+    "category": "ENDPOINT",
+    "sourceHost": "ws-fin-12",
+    "sourceIp": "10.20.5.3",
+    "destinationIp": "10.10.4.9",
+    "destinationPort": 445,
+    "userName": "SYSTEM",
+    "message": "Powershell encoded command executed on endpoint ws-fin-12"
+  },
+  {
+    "eventType": "RANSOMWARE_ACTIVITY",
+    "severity": "CRITICAL",
+    "category": "ENDPOINT",
+    "sourceHost": "file-01",
+    "sourceIp": "10.20.8.77",
+    "userName": "d.farrell",
+    "message": "Mass file rename pattern detected on file shares (1,200 files / minute)"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "LOW",
+    "category": "AUTHENTICATION",
+    "sourceIp": "10.20.1.98",
+    "destinationIp": "10.10.4.8",
+    "userName": "m.choi",
+    "message": "Single typo'd password entry"
+  },
+  {
+    "eventType": "LOGIN_SUCCESS",
+    "severity": "INFO",
+    "category": "AUTHENTICATION",
+    "sourceIp": "10.20.3.44",
+    "destinationIp": "10.10.4.8",
+    "userName": "a.nguyen",
+    "message": "Successful MFA login from managed laptop"
+  },
+  {
+    "eventType": "PATCH_APPLIED",
+    "severity": "INFO",
+    "category": "SYSTEM",
+    "sourceHost": "srv-win-04",
+    "message": "KB5049981 applied successfully"
+  },
+  {
+    "eventType": "PORT_SCAN",
+    "severity": "HIGH",
+    "category": "NETWORK",
+    "sourceIp": "45.155.205.233",
+    "destinationIp": "10.22.1.20",
+    "message": "SYN scan to 100+ ports on edge device, no responses"
+  },
+  {
+    "eventType": "CONFIG_CHANGE",
+    "severity": "LOW",
+    "category": "SYSTEM",
+    "sourceHost": "fw-edge-01",
+    "userName": "net-admin",
+    "message": "Firewall rule 4120 comment updated"
+  },
+  {
+    "eventType": "WEBSHELL",
+    "severity": "HIGH",
+    "category": "WEB",
+    "sourceHost": "web-front-07",
+    "sourceIp": "10.20.6.31",
+    "destinationIp": "10.20.6.31",
+    "message": "Suspicious .php file written to webroot and executed"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "CRITICAL",
+    "category": "AUTHENTICATION",
+    "sourceIp": "194.26.29.11",
+    "destinationIp": "10.10.4.8",
+    "userName": "admin",
+    "message": "Account lockout threshold reached for privileged account admin"
+  },
+  {
+    "eventType": "TOR_UNKNOWN",
+    "severity": "HIGH",
+    "category": "NETWORK",
+    "sourceIp": "104.18.2.31",
+    "destinationIp": "10.22.1.19",
+    "destinationPort": 22,
+    "message": "SSH connection from Tor exit node to bastion without approval"
+  },
+  {
+    "eventType": "LOGIN_SUCCESS",
+    "severity": "INFO",
+    "category": "AUTHENTICATION",
+    "sourceIp": "10.20.2.7",
+    "destinationIp": "10.10.4.8",
+    "userName": "d.farrell",
+    "message": "Successful SSH key login"
+  },
+  {
+    "eventType": "C2_BEACON",
+    "severity": "HIGH",
+    "category": "NETWORK",
+    "sourceIp": "10.20.5.19",
+    "destinationIp": "198.51.100.42",
+    "destinationPort": 80,
+    "message": "Periodic beacon traffic to known-badware sinkhole every 45 seconds"
+  },
+  {
+    "eventType": "RANSOMWARE_ACTIVITY",
+    "severity": "CRITICAL",
+    "category": "ENDPOINT",
+    "sourceHost": "db-03",
+    "sourceIp": "10.20.9.2",
+    "userName": "SYSTEM",
+    "message": "Encryption API calls observed in database server process"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "MEDIUM",
+    "category": "AUTHENTICATION",
+    "sourceIp": "10.20.1.77",
+    "destinationIp": "10.10.4.8",
+    "userName": "svc_reports",
+    "message": "3 failed attempts for service account svc_reports"
+  },
+  {
+    "eventType": "LOGIN_SUCCESS",
+    "severity": "INFO",
+    "category": "AUTHENTICATION",
+    "sourceIp": "10.20.1.12",
+    "destinationIp": "10.10.4.8",
+    "userName": "sam.admin",
+    "message": "Successful console login"
+  },
+  {
+    "eventType": "DATA_EXFILTRATION",
+    "severity": "CRITICAL",
+    "category": "DATA",
+    "sourceIp": "10.20.30.44",
+    "destinationIp": "203.0.113.17",
+    "destinationPort": 443,
+    "userName": "t.blackwood",
+    "message": "S3 bucket contents streamed to unapproved external endpoint"
+  },
+  {
+    "eventType": "PATCH_APPLIED",
+    "severity": "INFO",
+    "category": "SYSTEM",
+    "sourceHost": "srv-linux-12",
+    "message": "kernel-lts update installed"
+  },
+  {
+    "eventType": "PORT_SCAN",
+    "severity": "MEDIUM",
+    "category": "NETWORK",
+    "sourceIp": "10.22.9.4",
+    "destinationIp": "10.22.1.30",
+    "message": "UDP probe on common service ports"
+  },
+  {
+    "eventType": "COMMAND_SHELL",
+    "severity": "HIGH",
+    "category": "ENDPOINT",
+    "sourceHost": "ws-dev-02",
+    "sourceIp": "10.20.5.90",
+    "message": "cmd.exe spawned from Microsoft Word process"
+  },
+  {
+    "eventType": "CONFIG_CHANGE",
+    "severity": "LOW",
+    "category": "SYSTEM",
+    "sourceHost": "fw-edge-02",
+    "userName": "net-admin",
+    "message": "VPN client allowlist updated"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "HIGH",
+    "category": "AUTHENTICATION",
+    "sourceIp": "103.74.192.22",
+    "destinationIp": "10.10.4.8",
+    "userName": "a.nguyen",
+    "message": "Repeated 401 responses from web portal for a.nguyen"
+  },
+  {
+    "eventType": "MALWARE_DETECTED",
+    "severity": "HIGH",
+    "category": "ENDPOINT",
+    "sourceHost": "ws-hr-31",
+    "sourceIp": "10.20.14.8",
+    "userName": "j.lawson",
+    "message": "Heuristic detection: coinminer binary staged in Downloads"
+  },
+  {
+    "eventType": "LOGIN_SUCCESS",
+    "severity": "INFO",
+    "category": "AUTHENTICATION",
+    "sourceIp": "10.20.3.7",
+    "destinationIp": "10.10.4.8",
+    "userName": "p.wells",
+    "message": "Successful login with hardware token"
+  },
+  {
+    "eventType": "PRIVILEGE_ESCALATION",
+    "severity": "HIGH",
+    "category": "IDENTITY",
+    "sourceIp": "10.20.7.5",
+    "destinationIp": "10.10.4.8",
+    "userName": "l.singer",
+    "message": "User obtained sudo via group change outside change window"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "INFO",
+    "category": "AUTHENTICATION",
+    "sourceIp": "10.20.1.98",
+    "destinationIp": "10.10.4.8",
+    "userName": "m.choi",
+    "message": "VPN re-auth token expired"
+  },
+  {
+    "eventType": "WEBSHELL",
+    "severity": "CRITICAL",
+    "category": "WEB",
+    "sourceHost": "web-app-02",
+    "sourceIp": "10.20.6.19",
+    "message": "c99.php webshell deployed and spawned child process"
+  },
+  {
+    "eventType": "CONFIG_CHANGE",
+    "severity": "MEDIUM",
+    "category": "SYSTEM",
+    "sourceHost": "idp-prod-3",
+    "userName": "idm-admin",
+    "message": "Password policy complexity settings modified"
+  },
+  {
+    "eventType": "LOGIN_SUCCESS",
+    "severity": "INFO",
+    "category": "AUTHENTICATION",
+    "sourceIp": "10.20.1.44",
+    "destinationIp": "10.10.4.8",
+    "userName": "r.dhar",
+    "message": "Successful elevated session"
+  },
+  {
+    "eventType": "C2_BEACON",
+    "severity": "HIGH",
+    "category": "NETWORK",
+    "sourceIp": "10.20.5.22",
+    "destinationIp": "198.51.100.90",
+    "destinationPort": 443,
+    "message": "TLS beacon to newly-registered domain every 90 seconds"
+  },
+  {
+    "eventType": "RANSOMWARE_ACTIVITY",
+    "severity": "CRITICAL",
+    "category": "ENDPOINT",
+    "sourceHost": "file-02",
+    "sourceIp": "10.20.8.99",
+    "message": "ShadowCopy deletion API invoked on file server"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "HIGH",
+    "category": "AUTHENTICATION",
+    "sourceIp": "91.219.236.11",
+    "destinationIp": "10.10.4.8",
+    "userName": "admin",
+    "message": "Brute-force pattern against admin account mitigated by lockout"
+  },
+  {
+    "eventType": "PATCH_APPLIED",
+    "severity": "INFO",
+    "category": "SYSTEM",
+    "sourceHost": "srv-win-09",
+    "message": "Security update installed and pending restart"
+  }
+]

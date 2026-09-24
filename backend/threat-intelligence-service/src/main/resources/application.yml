@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: threat-intelligence-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8088/realms/enterprise-siem}
+          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8088/realms/enterprise-siem/protocol/openid-connect/certs}
+
+server:
+  port: ${SERVER_PORT:8086}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true

@@ -1,0 +1,76 @@
+[
+  {
+    "id": "SIEM-1001",
+    "name": "Critical Malware Detected",
+    "description": "Endpoint protection reported a malware or ransomware detection.",
+    "severity": "CRITICAL",
+    "enabled": true,
+    "condition": {
+      "eventTypes": ["MALWARE_DETECTED", "RANSOMWARE_ACTIVITY", "RANSOMWARE"],
+      "severityMin": "HIGH"
+    }
+  },
+  {
+    "id": "SIEM-1002",
+    "name": "Repeated Login Failures",
+    "description": "High-severity authentication failures indicate a brute-force attempt.",
+    "severity": "HIGH",
+    "enabled": true,
+    "condition": {
+      "eventTypes": ["LOGIN_FAILURE"],
+      "severityMin": "HIGH"
+    }
+  },
+  {
+    "id": "SIEM-1003",
+    "name": "Privilege Escalation Attempt",
+    "description": "A privilege escalation or unauthorized elevation attempt was observed.",
+    "severity": "CRITICAL",
+    "enabled": true,
+    "condition": {
+      "eventTypes": ["PRIVILEGE_ESCALATION", "TOR_UNKNOWN"],
+      "severityMin": "HIGH"
+    }
+  },
+  {
+    "id": "SIEM-1004",
+    "name": "Network Reconnaissance Activity",
+    "description": "Port scans or network reconnaissance patterns from a host.",
+    "severity": "MEDIUM",
+    "enabled": true,
+    "condition": {
+      "eventTypes": ["PORT_SCAN", "SCAN"],
+      "severityMin": "MEDIUM"
+    }
+  },
+  {
+    "id": "SIEM-1005",
+    "name": "Data Exfiltration Attempt",
+    "description": "Suspected exfiltration of data from the environment.",
+    "severity": "CRITICAL",
+    "enabled": true,
+    "condition": {
+      "eventTypes": ["DATA_EXFILTRATION"]
+    }
+  },
+  {
+    "id": "SIEM-1006",
+    "name": "Suspicious Activity on Sensitive Asset",
+    "description": "Any critical event regardless of type requires immediate attention.",
+    "severity": "CRITICAL",
+    "enabled": true,
+    "condition": {
+      "severityMin": "CRITICAL"
+    }
+  },
+  {
+    "id": "SIEM-1007",
+    "name": "Command Shell or Payload Activity",
+    "description": "Command-and-control or payload delivery indicators observed.",
+    "severity": "HIGH",
+    "enabled": true,
+    "condition": {
+      "eventTypes": ["COMMAND_SHELL", "POWERSHELL", "C2_BEACON", "WEBSHELL"]
+    }
+  }
+]

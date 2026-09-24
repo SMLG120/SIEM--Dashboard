@@ -1,0 +1,234 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.7.4
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?KEYCLOAK_ADMIN_USERNAME is required}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+      SIEM_DEMO_PASSWORD: ${SIEM_DEMO_PASSWORD:?SIEM_DEMO_PASSWORD is required}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - mkdir -p /opt/keycloak/data/import && sed -e "s|__SIEM_DEMO_PASSWORD__|$SIEM_DEMO_PASSWORD|g" /opt/keycloak/data/import-template/enterprise-siem-realm.json.template > /opt/keycloak/data/import/enterprise-siem-realm.json && exec /opt/keycloak/bin/kc.sh start-dev --import-realm
+    ports:
+      - "8088:8080"
+    volumes:
+      - ./infrastructure/keycloak:/opt/keycloak/data/import-template:ro
+
+  kafka:
+    image: apache/kafka:3.7.0
+    environment:
+      CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+    ports:
+      - "29092:29092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local-siem
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8090:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/spring-service.Dockerfile
+      args:
+        SERVICE_PATH: backend/api-gateway
+        JAR_NAME: api-gateway
+    environment:
+      SERVER_PORT: 8080
+      OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
+      OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - keycloak
+      - auth-service
+      - ingestion-service
+      - detection-service
+      - alert-service
+      - incident-service
+      - threat-intelligence-service
+      - audit-service
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/spring-service.Dockerfile
+      args:
+        SERVICE_PATH: backend/auth-service
+        JAR_NAME: auth-service
+    environment:
+      SERVER_PORT: 8081
+      OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
+      OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
+
+  ingestion-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/spring-service.Dockerfile
+      args:
+        SERVICE_PATH: backend/ingestion-service
+        JAR_NAME: ingestion-service
+    environment:
+      SERVER_PORT: 8082
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
+      OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
+    depends_on:
+      keycloak:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+
+  detection-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/spring-service.Dockerfile
+      args:
+        SERVICE_PATH: backend/detection-service
+        JAR_NAME: detection-service
+    environment:
+      SERVER_PORT: 8083
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
+      OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
+    depends_on:
+      keycloak:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+
+  alert-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/spring-service.Dockerfile
+      args:
+        SERVICE_PATH: backend/alert-service
+        JAR_NAME: alert-service
+    environment:
+      SERVER_PORT: 8084
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
+      OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
+    depends_on:
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+
+  incident-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/spring-service.Dockerfile
+      args:
+        SERVICE_PATH: backend/incident-service
+        JAR_NAME: incident-service
+    environment:
+      SERVER_PORT: 8085
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
+      OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
+    depends_on:
+      - keycloak
+
+  threat-intelligence-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/spring-service.Dockerfile
+      args:
+        SERVICE_PATH: backend/threat-intelligence-service
+        JAR_NAME: threat-intelligence-service
+    environment:
+      SERVER_PORT: 8086
+      OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
+      OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
+    depends_on:
+      - keycloak
+
+  audit-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/spring-service.Dockerfile
+      args:
+        SERVICE_PATH: backend/audit-service
+        JAR_NAME: audit-service
+    environment:
+      SERVER_PORT: 8087
+      OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
+      OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
+    depends_on:
+      - keycloak
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend.Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+      VITE_KEYCLOAK_URL: http://localhost:8088
+      VITE_KEYCLOAK_REALM: enterprise-siem
+      VITE_KEYCLOAK_CLIENT_ID: siem-dashboard
+    depends_on:
+      - api-gateway
+
+volumes:
+  postgres-data:
+  redis-data:
+  kafka-data:

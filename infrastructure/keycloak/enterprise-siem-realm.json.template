@@ -1,0 +1,161 @@
+{
+  "realm": "enterprise-siem",
+  "enabled": true,
+  "displayName": "Enterprise SIEM",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "ADMIN",
+        "description": "Full administrative access"
+      },
+      {
+        "name": "SOC_MANAGER",
+        "description": "SOC manager access for rule, alert, incident, audit, and threat-intel workflows"
+      },
+      {
+        "name": "SECURITY_ANALYST",
+        "description": "Analyst access for event, alert, and incident investigation"
+      },
+      {
+        "name": "VIEWER",
+        "description": "Read-only dashboard and alert visibility"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "siem-dashboard",
+      "name": "SIEM Dashboard",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "api-gateway",
+      "name": "SIEM API Gateway",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "bearerOnly": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "siem-demo",
+      "name": "SIEM Demo/Test Script Client",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "email": "admin@example.test",
+      "realmRoles": [
+        "ADMIN"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__SIEM_DEMO_PASSWORD__",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "sam.analyst",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Sam",
+      "lastName": "Analyst",
+      "email": "sam.analyst@example.test",
+      "realmRoles": [
+        "SECURITY_ANALYST"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__SIEM_DEMO_PASSWORD__",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "sam.manager",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Sam",
+      "lastName": "Manager",
+      "email": "sam.manager@example.test",
+      "realmRoles": [
+        "SOC_MANAGER"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__SIEM_DEMO_PASSWORD__",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "sam.admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Sam",
+      "lastName": "Admin",
+      "email": "sam.admin@example.test",
+      "realmRoles": [
+        "ADMIN"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__SIEM_DEMO_PASSWORD__",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "sam.viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Sam",
+      "lastName": "Viewer",
+      "email": "sam.viewer@example.test",
+      "realmRoles": [
+        "VIEWER"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__SIEM_DEMO_PASSWORD__",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8088/realms/enterprise-siem}
+          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8088/realms/enterprise-siem/protocol/openid-connect/certs}
+  cloud:
+    gateway:
+      default-filters:
+        - SecureHeaders
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:5173"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowed-headers: "*"
+            exposed-headers:
+              - "X-Correlation-Id"
+            allow-credentials: false
+      routes:
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
+              predicates:
+                - Path=/api/auth/**,/api/users/**
+            - id: ingestion-service
+              uri: ${INGESTION_SERVICE_URL:http://ingestion-service:8082}
+              predicates:
+                - Path=/api/events/**
+            - id: detection-service
+              uri: ${DETECTION_SERVICE_URL:http://detection-service:8083}
+              predicates:
+                - Path=/api/detection/**,/api/rules/**
+            - id: alert-service
+              uri: ${ALERT_SERVICE_URL:http://alert-service:8084}
+              predicates:
+                - Path=/api/alerts/**
+            - id: incident-service
+              uri: ${INCIDENT_SERVICE_URL:http://incident-service:8085}
+              predicates:
+                - Path=/api/incidents/**
+            - id: threat-intelligence-service
+              uri: ${THREAT_INTEL_SERVICE_URL:http://threat-intelligence-service:8086}
+              predicates:
+                - Path=/api/threat-intel/**
+            - id: audit-service
+              uri: ${AUDIT_SERVICE_URL:http://audit-service:8087}
+              predicates:
+                - Path=/api/audit/**
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      probes:
+        enabled: true
+    gateway:
+      enabled: true
