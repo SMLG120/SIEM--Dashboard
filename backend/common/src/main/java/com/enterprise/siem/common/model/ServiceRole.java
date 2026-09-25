@@ -8,6 +8,7 @@ public enum ServiceRole {
     ALERT,
     INCIDENT,
     THREAT_INTELLIGENCE,
-    AUDIT
+    AUDIT,
+    SEARCH
 }
 

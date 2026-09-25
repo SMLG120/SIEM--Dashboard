@@ -13,6 +13,7 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -24,7 +25,7 @@ class IncidentServiceTest {
     @Test
     void aggregatesCorrelatedAlertsIntoOneIncident() {
         IncidentStore store = new IncidentStore();
-        IncidentService service = new IncidentService(store, new IncidentKafkaConfig(noopTemplate()));
+        IncidentService service = new IncidentService(store, new IncidentKafkaConfig(noopTemplate()), noopRepository());
 
         service.correlate(alert("a1", "10.0.0.5", "SIEM-1001", EventSeverity.CRITICAL));
         service.correlate(alert("a2", "10.0.0.5", "SIEM-1002", EventSeverity.HIGH));
@@ -44,7 +45,7 @@ class IncidentServiceTest {
     @Test
     void doesNotDuplicateAlertLinks() {
         IncidentStore store = new IncidentStore();
-        IncidentService service = new IncidentService(store, new IncidentKafkaConfig(noopTemplate()));
+        IncidentService service = new IncidentService(store, new IncidentKafkaConfig(noopTemplate()), noopRepository());
 
         SiemAlert alert = alert("a1", "10.0.0.5", "SIEM-1001", EventSeverity.HIGH);
         service.correlate(alert);
@@ -59,7 +60,7 @@ class IncidentServiceTest {
     @Test
     void differentSourcesRemainSeparateIncidents() {
         IncidentStore store = new IncidentStore();
-        IncidentService service = new IncidentService(store, new IncidentKafkaConfig(noopTemplate()));
+        IncidentService service = new IncidentService(store, new IncidentKafkaConfig(noopTemplate()), noopRepository());
 
         service.correlate(alert("a1", "10.0.0.1", "SIEM-1001", EventSeverity.LOW));
         service.correlate(alert("a2", "10.0.0.2", "SIEM-1001", EventSeverity.LOW));
@@ -78,6 +79,24 @@ class IncidentServiceTest {
             @Override
             public CompletableFuture<SendResult<String, IncidentEvent>> send(String topic, String key, IncidentEvent value) {
                 return CompletableFuture.completedFuture(null);
+            }
+        };
+    }
+
+    private IncidentRepository noopRepository() {
+        return new IncidentRepository(null, null) {
+            @Override
+            public void save(Incident incident) {
+            }
+
+            @Override
+            public List<Incident> recent(int limit) {
+                return List.of();
+            }
+
+            @Override
+            public long count() {
+                return 0L;
             }
         };
     }

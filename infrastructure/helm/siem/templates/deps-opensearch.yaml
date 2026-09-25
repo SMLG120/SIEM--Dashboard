@@ -1,0 +1,49 @@
+{{- if .Values.dependencies.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: siem-opensearch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: siem-opensearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: siem-opensearch
+  template:
+    metadata:
+      labels:
+        app: siem-opensearch
+    spec:
+      containers:
+        - name: opensearch
+          image: opensearchproject/opensearch:2.15.0
+          ports:
+            - name: http
+              containerPort: 9200
+          env:
+            - name: discovery.type
+              value: "single-node"
+            - name: bootstrap.memory_lock
+              value: "false"
+            - name: DISABLE_SECURITY_PLUGIN
+              value: "true"
+            - name: DISABLE_INSTALL_DEMO_CONFIG
+              value: "true"
+            - name: OPENSEARCH_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: siem-opensearch
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: siem-opensearch
+  ports:
+    - name: http
+      port: 9200
+      targetPort: http
+{{- end }}

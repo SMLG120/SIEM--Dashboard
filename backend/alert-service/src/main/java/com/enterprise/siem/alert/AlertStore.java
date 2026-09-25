@@ -121,4 +121,26 @@ public class AlertStore {
             lock.unlock();
         }
     }
+
+    public void restore(List<AlertDetail> details) {
+        lock.lock();
+        try {
+            alerts.clear();
+            byId.clear();
+            assignedTo.clear();
+            notes.clear();
+            for (AlertDetail detail : details) {
+                alerts.add(detail.alert());
+                byId.put(detail.alert().id(), detail.alert());
+                if (detail.assignedTo() != null && !detail.assignedTo().isBlank()) {
+                    assignedTo.put(detail.alert().id(), detail.assignedTo());
+                }
+                if (!detail.notes().isEmpty()) {
+                    notes.put(detail.alert().id(), new ArrayList<>(detail.notes()));
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
 }

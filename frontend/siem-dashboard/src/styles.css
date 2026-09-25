@@ -883,3 +883,131 @@ code {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Phase 8-10 additions: rule actions + search
+--------------------------------------------------------------------------- */
+
+.subtle-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #263550;
+  border-radius: 8px;
+  background: #172235;
+  color: #c8d4e5;
+  font-weight: 600;
+  font-size: 0.84rem;
+}
+
+.subtle-button:disabled,
+.primary-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.rule-grid {
+  grid-template-columns: 90px minmax(200px, 1.4fr) 100px 90px minmax(240px, 1.2fr) minmax(200px, 0.9fr);
+}
+
+.rule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.rule-actions select,
+.search-input {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #263550;
+  border-radius: 8px;
+  background: #0f1623;
+  color: #e7edf7;
+  font-size: 0.9rem;
+}
+
+.search-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 14px;
+}
+
+.search-results {
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.search-grid {
+  grid-template-columns: 110px 110px minmax(150px, 0.9fr) minmax(260px, 1.6fr);
+  min-width: 720px;
+}
+
+.search-detail {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.search-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1.1fr)) repeat(2, minmax(0, 1.6fr));
+}
+
+.metric-wide {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+}
+
+.metric-label {
+  color: #8fa2bd;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.severity-strip {
+  display: flex;
+  height: 30px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0f1623;
+  border: 1px solid #1e2b40;
+}
+
+.severity-fraction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 6px;
+  color: #0f1623;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.severity-fraction.critical {
+  background: #ff6b7a;
+}
+
+.severity-fraction.high {
+  background: #ffb35c;
+}
+
+.severity-fraction.medium {
+  background: #f5d66e;
+}
+
+.severity-fraction.low {
+  background: #4dd4ac;
+}
+
+.severity-fraction.info {
+  background: #7db4ee;
+}

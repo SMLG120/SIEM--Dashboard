@@ -1,0 +1,101 @@
+image:
+  repository: siem
+  tag: latest
+  pullPolicy: IfNotPresent
+
+dependencies:
+  enabled: true
+
+services:
+  api-gateway:
+    port: 8080
+    env:
+      SERVER_PORT: "8080"
+      REDIS_HOST: siem-redis
+      REDIS_PORT: "6379"
+      OIDC_ISSUER_URI: http://siem-keycloak:8080/realms/enterprise-siem
+      OIDC_JWK_SET_URI: http://siem-keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs
+  auth-service:
+    port: 8081
+    env:
+      SERVER_PORT: "8081"
+      OIDC_ISSUER_URI: http://siem-keycloak:8080/realms/enterprise-siem
+      OIDC_JWK_SET_URI: http://siem-keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs
+  ingestion-service:
+    port: 8082
+    env:
+      SERVER_PORT: "8082"
+      KAFKA_BOOTSTRAP_SERVERS: siem-kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://siem-postgres:5432/siem
+      SPRING_DATASOURCE_USERNAME: siem_app
+      SPRING_DATASOURCE_PASSWORD: change-me-locally
+      OIDC_ISSUER_URI: http://siem-keycloak:8080/realms/enterprise-siem
+      OIDC_JWK_SET_URI: http://siem-keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs
+  detection-service:
+    port: 8083
+    env:
+      SERVER_PORT: "8083"
+      KAFKA_BOOTSTRAP_SERVERS: siem-kafka:9092
+      OIDC_ISSUER_URI: http://siem-keycloak:8080/realms/enterprise-siem
+      OIDC_JWK_SET_URI: http://siem-keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs
+  alert-service:
+    port: 8084
+    env:
+      SERVER_PORT: "8084"
+      KAFKA_BOOTSTRAP_SERVERS: siem-kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://siem-postgres:5432/siem
+      SPRING_DATASOURCE_USERNAME: siem_app
+      SPRING_DATASOURCE_PASSWORD: change-me-locally
+      OIDC_ISSUER_URI: http://siem-keycloak:8080/realms/enterprise-siem
+      OIDC_JWK_SET_URI: http://siem-keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs
+  incident-service:
+    port: 8085
+    env:
+      SERVER_PORT: "8085"
+      KAFKA_BOOTSTRAP_SERVERS: siem-kafka:9092
+      SPRING_DATASOURCE_URL: jdbc:postgresql://siem-postgres:5432/siem
+      SPRING_DATASOURCE_USERNAME: siem_app
+      SPRING_DATASOURCE_PASSWORD: change-me-locally
+      OIDC_ISSUER_URI: http://siem-keycloak:8080/realms/enterprise-siem
+      OIDC_JWK_SET_URI: http://siem-keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs
+  threat-intelligence-service:
+    port: 8086
+    env:
+      SERVER_PORT: "8086"
+      OIDC_ISSUER_URI: http://siem-keycloak:8080/realms/enterprise-siem
+      OIDC_JWK_SET_URI: http://siem-keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs
+  audit-service:
+    port: 8087
+    env:
+      SERVER_PORT: "8087"
+      OIDC_ISSUER_URI: http://siem-keycloak:8080/realms/enterprise-siem
+      OIDC_JWK_SET_URI: http://siem-keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs
+  search-service:
+    port: 8088
+    env:
+      SERVER_PORT: "8088"
+      KAFKA_BOOTSTRAP_SERVERS: siem-kafka:9092
+      SIEM_SEARCH_STORAGE: opensearch
+      OPENSEARCH_HOST: siem-opensearch
+      OPENSEARCH_PORT: "9200"
+      OIDC_ISSUER_URI: http://siem-keycloak:8080/realms/enterprise-siem
+      OIDC_JWK_SET_URI: http://siem-keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs
+
+frontend:
+  enabled: true
+  image:
+    repository: siem-frontend
+    tag: latest
+  env:
+    VITE_API_BASE_URL: http://api-gateway:8080
+    VITE_KEYCLOAK_URL: http://siem-keycloak:8080
+    VITE_KEYCLOAK_REALM: enterprise-siem
+    VITE_KEYCLOAK_CLIENT_ID: siem-dashboard
+
+postgresql:
+  database: siem
+  username: siem_app
+  password: change-me-locally
+
+redis:
+  password: ""

@@ -14,4 +14,12 @@ public class DetectionKafkaConfig {
                 .replicas(1)
                 .build();
     }
+
+    @Bean
+    NewTopic rulesTopic() {
+        return TopicBuilder.name(RuleChangeConsumer.RULES_TOPIC)
+                .partitions(3)
+                .replicas(1)
+                .build();
+    }
 }

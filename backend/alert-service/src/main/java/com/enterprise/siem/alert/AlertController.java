@@ -20,9 +20,11 @@ import java.util.List;
 @RequestMapping("/api/alerts")
 public class AlertController {
     private final AlertStore alertStore;
+    private final AlertRepository alertRepository;
 
-    public AlertController(AlertStore alertStore) {
+    public AlertController(AlertStore alertStore, AlertRepository alertRepository) {
         this.alertStore = alertStore;
+        this.alertRepository = alertRepository;
     }
 
     @GetMapping
@@ -86,7 +88,10 @@ public class AlertController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "assignedTo is required");
         }
         return alertStore.assign(id, request.assignedTo())
-                .map(ignored -> alertStore.workflow(id).orElseThrow())
+                .map(ignored -> {
+                    alertRepository.assign(id, request.assignedTo());
+                    return alertStore.workflow(id).orElseThrow();
+                })
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found: " + id));
     }
 
@@ -98,6 +103,10 @@ public class AlertController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Note text is required");
         }
         return alertStore.addNote(id, actor(jwt), request.text())
+                .map(note -> {
+                    alertRepository.insertNote(id, note);
+                    return note;
+                })
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found: " + id));
     }
 
@@ -108,6 +117,10 @@ public class AlertController {
 
     private SiemAlert updateStatus(String id, AlertStatus status) {
         return alertStore.updateStatus(id, status)
+                .map(updated -> {
+                    alertRepository.updateStatus(updated);
+                    return updated;
+                })
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found: " + id));
     }
 

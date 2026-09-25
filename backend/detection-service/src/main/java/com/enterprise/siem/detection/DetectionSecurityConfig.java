@@ -20,7 +20,7 @@ class DetectionSecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/detection/**", "/api/rules/**").hasAnyRole(
                                 SiemRoles.ADMIN,
                                 SiemRoles.SOC_MANAGER,

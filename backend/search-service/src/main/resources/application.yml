@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: search-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8088/realms/enterprise-siem}
+          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8088/realms/enterprise-siem/protocol/openid-connect/certs}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: search-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.enterprise.siem.common.model
+
+server:
+  port: ${SERVER_PORT:8088}
+
+siem:
+  search:
+    storage: ${SIEM_SEARCH_STORAGE:memory}
+    opensearch:
+      host: ${OPENSEARCH_HOST:localhost}
+      port: ${OPENSEARCH_PORT:9200}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

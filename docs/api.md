@@ -11,7 +11,12 @@ All domain routes require a Keycloak-issued bearer token. The API Gateway perfor
 
 ## Actuator
 
-- `GET /actuator/health`, `GET /actuator/info` are public for orchestration checks.
+- `GET /actuator/health`, `GET /actuator/info`, `GET /actuator/prometheus` are public for orchestration checks and metrics scraping.
+- `GET /actuator/gateway/routes` (gateway) is protected.
+
+## Rate Limiting (Phase 8)
+
+Routed requests through the gateway are metered by a Redis token bucket (per-user, default 20 req/s with burst 40; `SIEM_RATE_LIMIT_REPLENISH` / `SIEM_RATE_LIMIT_BURST`). Exceeding the bucket returns `429 Too Many Requests`; every metered response includes `X-RateLimit-Replenish-Rate`, `X-RateLimit-Burst-Capacity`, `X-RateLimit-Requested-Tokens`, and `X-RateLimit-Remaining`.
 
 ## Readiness (Phase 2)
 
@@ -22,6 +27,7 @@ All domain routes require a Keycloak-issued bearer token. The API Gateway perfor
 - `GET /api/incidents/internal/status`
 - `GET /api/threat-intel/internal/status`
 - `GET /api/audit/internal/status`
+- `GET /api/search/internal/status`
 
 ## Events (Phase 3)
 
@@ -34,10 +40,12 @@ Roles: reads for `ADMIN`, `SOC_MANAGER`, `SECURITY_ANALYST`; ingestion for the s
 
 ## Rules (Phase 3)
 
-Roles: reads for `ADMIN`, `SOC_MANAGER`, `SECURITY_ANALYST`; writes reserved for `ADMIN`, `SOC_MANAGER`.
+Roles: reads for `ADMIN`, `SOC_MANAGER`, `SECURITY_ANALYST`; writes for `ADMIN`, `SOC_MANAGER`.
 
 - `GET /api/rules` — packaged detection rules.
 - `GET /api/rules/{id}` — a single rule.
+- `POST /api/rules/{id}/enable` / `POST /api/rules/{id}/disable` — toggle a rule live across all detection instances (published to the `siem.rules` topic).
+- `POST /api/rules/{id}/severity` — body `{ "severity": "LOW"|"MEDIUM"|"HIGH"|"CRITICAL" }`; applies live. Writes restricted to `ADMIN`, `SOC_MANAGER`; unknown rule → `404`, invalid severity → `400`.
 
 ## Detection (Phase 3)
 
@@ -73,8 +81,19 @@ Roles: reads and writes for `ADMIN`, `SOC_MANAGER`, `SECURITY_ANALYST`; `VIEWER`
 
 Incidents are also created automatically: the incident-service consumes `siem.alerts` and groups unresolved alerts by matching `sourceIp`.
 
+## Search (Phase 10)
+
+Roles: `ADMIN`, `SOC_MANAGER`, `SECURITY_ANALYST`. Backed by OpenSearch (`siem-events`, `siem-alerts`); the service indexes both Kafka streams as they are produced.
+
+- `GET /api/search/summary` — `{ eventsCount, alertsCount, eventsBySeverity, alertsBySeverity }` where the two maps are severity → count.
+- `GET /api/search/events?q=&limit=50` — indexed event hits, newest first; `q` is a full-text query (substring match, so `ransomware` finds `RANSOMWARE_ACTIVITY`), `limit` is clamped to 1–100. Empty `q` returns the most recent events.
+- `GET /api/search/alerts?q=&limit=50` — same contract for generated alerts.
+- Each hit is `{ index, id, timestamp, fields }` where `fields` is the indexed document (e.g. `eventType`, `severity`, `sourceIp`, `ruleId`, `status`).
+
 ## Authorization Rules
 
 - Event, alert, and incident writes require `ADMIN`, `SOC_MANAGER`, or `SECURITY_ANALYST`.
 - Incident reads are restricted to the same set (not `VIEWER`).
+- Search reads require `ADMIN`, `SOC_MANAGER`, or `SECURITY_ANALYST`.
+- Rule enable/disable/severity changes require `ADMIN` or `SOC_MANAGER`.
 - Threat-intel and audit remain `ADMIN`/`SOC_MANAGER` only.

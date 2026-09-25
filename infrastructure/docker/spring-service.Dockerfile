@@ -4,7 +4,7 @@ WORKDIR /workspace
 COPY pom.xml .
 COPY backend backend
 ARG SERVICE_PATH
-RUN mvn -pl "${SERVICE_PATH}" -am -DskipTests package
+RUN --mount=type=cache,target=/root/.m2/repository mvn -pl "${SERVICE_PATH}" -am -DskipTests package
 
 FROM eclipse-temurin:21-jre
 

@@ -1,0 +1,51 @@
+{{- if .Values.dependencies.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: siem-postgres
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: siem-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: siem-postgres
+  template:
+    metadata:
+      labels:
+        app: siem-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - name: pg
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgresql.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgresql.username | quote }}
+            - name: POSTGRES_PASSWORD
+              value: {{ .Values.postgresql.password | quote }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: siem-postgres
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: siem-postgres
+  ports:
+    - name: pg
+      port: 5432
+      targetPort: pg
+{{- end }}

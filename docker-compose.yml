@@ -44,6 +44,22 @@ services:
     volumes:
       - ./infrastructure/keycloak:/opt/keycloak/data/import-template:ro
 
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "false"
+      DISABLE_SECURITY_PLUGIN: "true"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health?wait_for_status=yellow || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+
   kafka:
     image: apache/kafka:3.7.0
     environment:
@@ -91,19 +107,33 @@ services:
         JAR_NAME: api-gateway
     environment:
       SERVER_PORT: 8080
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     ports:
       - "8080:8080"
     depends_on:
-      - keycloak
-      - auth-service
-      - ingestion-service
-      - detection-service
-      - alert-service
-      - incident-service
-      - threat-intelligence-service
-      - audit-service
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+      auth-service:
+        condition: service_started
+      ingestion-service:
+        condition: service_started
+      detection-service:
+        condition: service_started
+      alert-service:
+        condition: service_started
+      incident-service:
+        condition: service_started
+      threat-intelligence-service:
+        condition: service_started
+      audit-service:
+        condition: service_started
+      search-service:
+        condition: service_started
 
   auth-service:
     build:
@@ -127,9 +157,14 @@ services:
     environment:
       SERVER_PORT: 8082
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-siem}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-siem_app}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change-me-locally}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     depends_on:
+      postgres:
+        condition: service_healthy
       keycloak:
         condition: service_started
       kafka:
@@ -163,9 +198,14 @@ services:
     environment:
       SERVER_PORT: 8084
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-siem}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-siem_app}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change-me-locally}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     depends_on:
+      postgres:
+        condition: service_healthy
       kafka:
         condition: service_healthy
       keycloak:
@@ -181,10 +221,16 @@ services:
     environment:
       SERVER_PORT: 8085
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-siem}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-siem_app}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-change-me-locally}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     depends_on:
-      - keycloak
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
 
   threat-intelligence-service:
     build:
@@ -214,6 +260,29 @@ services:
     depends_on:
       - keycloak
 
+  search-service:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/spring-service.Dockerfile
+      args:
+        SERVICE_PATH: backend/search-service
+        JAR_NAME: search-service
+    environment:
+      SERVER_PORT: 8088
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SIEM_SEARCH_STORAGE: ${SIEM_SEARCH_STORAGE:-opensearch}
+      OPENSEARCH_HOST: opensearch
+      OPENSEARCH_PORT: 9200
+      OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:8088/realms/enterprise-siem}
+      OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+
   frontend:
     build:
       context: .
@@ -227,6 +296,31 @@ services:
       VITE_KEYCLOAK_CLIENT_ID: siem-dashboard
     depends_on:
       - api-gateway
+
+  prometheus:
+    image: prom/prometheus:v2.53.1
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api-gateway
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin123}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/siem-overview.json
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
 
 volumes:
   postgres-data:

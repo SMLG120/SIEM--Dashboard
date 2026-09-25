@@ -20,10 +20,12 @@ public class IncidentService {
 
     private final IncidentStore store;
     private final IncidentKafkaConfig kafka;
+    private final IncidentRepository repository;
 
-    public IncidentService(IncidentStore store, IncidentKafkaConfig kafka) {
+    public IncidentService(IncidentStore store, IncidentKafkaConfig kafka, IncidentRepository repository) {
         this.store = store;
         this.kafka = kafka;
+        this.repository = repository;
     }
 
     public void correlate(SiemAlert alert) {
@@ -43,6 +45,7 @@ public class IncidentService {
                                     "ALERT_LINKED",
                                     "Linked alert " + alert.id() + " (" + alert.ruleName() + ")")))
                     .orElse(incident);
+            repository.save(updated);
             kafka.publish(updated.id(), updated.title(), "ALERT_LINKED");
             return;
         }
@@ -58,6 +61,7 @@ public class IncidentService {
                 .appendTimeline(new TimelineEntry(Instant.now(), "system", "INCIDENT_CREATED",
                         "Incident created from source " + alert.sourceIp()));
         store.add(withAlert);
+        repository.save(withAlert);
         log.info("Created incident {} for alert {}", withAlert.id(), alert.id());
         kafka.publish(withAlert.id(), withAlert.title(), "INCIDENT_CREATED");
     }
@@ -98,11 +102,13 @@ public class IncidentService {
     }
 
     public Incident updateStatus(String id, IncidentStatus status, String actor) {
-        return store.update(id, current -> {
+        Incident updated = store.update(id, current -> {
             Incident next = current.withStatus(status);
             TimelineEntry entry = new TimelineEntry(Instant.now(), actor, "STATUS_CHANGED",
                     current.status() + " -> " + status);
             return next.appendTimeline(entry);
         }).orElseThrow(() -> new com.enterprise.siem.incident.NotFoundException("Incident not found: " + id));
+        repository.save(updated);
+        return updated;
     }
 }

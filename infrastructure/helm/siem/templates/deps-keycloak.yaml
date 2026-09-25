@@ -1,0 +1,57 @@
+{{- if .Values.dependencies.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: siem-keycloak
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: siem-keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: siem-keycloak
+  template:
+    metadata:
+      labels:
+        app: siem-keycloak
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.7.4
+          args: ["start-dev", "--import-realm"]
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: "admin"
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              value: "admin123"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+          volumeMounts:
+            - name: realm
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+      volumes:
+        - name: realm
+          configMap:
+            name: siem-keycloak-realm
+            optional: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: siem-keycloak
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: siem-keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+{{- end }}

@@ -64,4 +64,18 @@ public class IncidentStore {
             lock.unlock();
         }
     }
+
+    public void restore(List<Incident> restored) {
+        lock.lock();
+        try {
+            incidents.clear();
+            byId.clear();
+            for (Incident incident : restored) {
+                incidents.add(incident);
+                byId.put(incident.id(), incident);
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
 }

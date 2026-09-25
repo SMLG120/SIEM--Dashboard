@@ -47,4 +47,18 @@ public class EventsStore {
     public Optional<SecurityEvent> byId(String id) {
         return Optional.ofNullable(byId.get(id));
     }
+
+    public void restore(List<SecurityEvent> restored) {
+        lock.lock();
+        try {
+            events.clear();
+            byId.clear();
+            for (SecurityEvent event : restored) {
+                events.addFirst(event);
+                byId.put(event.id(), event);
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
 }

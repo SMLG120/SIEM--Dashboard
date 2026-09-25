@@ -19,7 +19,7 @@ class AuthSecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                         .requestMatchers("/api/users/**").hasRole(SiemRoles.ADMIN)
                         .requestMatchers("/api/auth/**").authenticated()
                         .anyRequest().authenticated()

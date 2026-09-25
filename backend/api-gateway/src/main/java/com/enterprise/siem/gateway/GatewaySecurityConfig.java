@@ -22,7 +22,7 @@ class GatewaySecurityConfig {
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .pathMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .pathMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                         .pathMatchers("/api/users/**").hasRole(SiemRoles.ADMIN)
                         .pathMatchers(HttpMethod.GET, "/api/events/**").hasAnyRole(
                                 SiemRoles.ADMIN,
@@ -62,6 +62,11 @@ class GatewaySecurityConfig {
                         )
                         .pathMatchers("/api/rules/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
                         .pathMatchers("/api/threat-intel/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
+                        .pathMatchers("/api/search/**").hasAnyRole(
+                                SiemRoles.ADMIN,
+                                SiemRoles.SOC_MANAGER,
+                                SiemRoles.SECURITY_ANALYST
+                        )
                         .pathMatchers("/api/audit/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
                         .pathMatchers("/api/auth/**").authenticated()
                         .anyExchange().authenticated()

@@ -13,10 +13,14 @@ public class EventIngestService {
 
     private final KafkaTemplate<String, SecurityEvent> kafkaTemplate;
     private final EventsStore eventsStore;
+    private final EventRepository eventRepository;
 
-    public EventIngestService(KafkaTemplate<String, SecurityEvent> kafkaTemplate, EventsStore eventsStore) {
+    public EventIngestService(KafkaTemplate<String, SecurityEvent> kafkaTemplate,
+                              EventsStore eventsStore,
+                              EventRepository eventRepository) {
         this.kafkaTemplate = kafkaTemplate;
         this.eventsStore = eventsStore;
+        this.eventRepository = eventRepository;
     }
 
     public SecurityEvent ingest(IngestEventRequest request) {
@@ -34,6 +38,7 @@ public class EventIngestService {
                 request.message()
         );
         eventsStore.add(event);
+        eventRepository.insert(event);
         kafkaTemplate.send(EVENTS_TOPIC, event.id(), event);
         return event;
     }

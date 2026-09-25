@@ -106,6 +106,20 @@ export type DetectionSummary = {
   recentAlerts: SiemAlert[];
 };
 
+export type SearchHit = {
+  index: string;
+  id: string;
+  timestamp?: string;
+  fields: Record<string, unknown>;
+};
+
+export type SearchSummary = {
+  eventsCount: number;
+  alertsCount: number;
+  eventsBySeverity: Record<string, number>;
+  alertsBySeverity: Record<string, number>;
+};
+
 export type ServiceStatus = {
   service: string;
   role: string;
@@ -199,6 +213,7 @@ export const serviceEndpoints = [
   { label: "Detection", path: "/api/detection/internal/status", key: "detection" },
   { label: "Alerts", path: "/api/alerts/internal/status", key: "alerts" },
   { label: "Incidents", path: "/api/incidents/internal/status", key: "incidents" },
+  { label: "Search", path: "/api/search/internal/status", key: "search" },
   { label: "Threat Intel", path: "/api/threat-intel/internal/status", key: "threat-intel" },
   { label: "Audit", path: "/api/audit/internal/status", key: "audit" }
 ] as const;

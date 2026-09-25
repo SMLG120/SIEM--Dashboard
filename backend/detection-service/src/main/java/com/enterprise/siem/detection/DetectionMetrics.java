@@ -1,31 +1,40 @@
 package com.enterprise.siem.detection;
 
-import java.util.concurrent.atomic.AtomicLong;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Component;
 
 @Component
 public class DetectionMetrics {
-    private final AtomicLong eventsEvaluated = new AtomicLong();
-    private final AtomicLong alertsGenerated = new AtomicLong();
+    private final Counter eventsEvaluated;
+    private final Counter alertsGenerated;
+
+    public DetectionMetrics(MeterRegistry meterRegistry) {
+        this.eventsEvaluated = meterRegistry.counter("siem_detection_events_evaluated_total",
+                "component", "detection-engine");
+        this.alertsGenerated = meterRegistry.counter("siem_detection_alerts_generated_total",
+                "component", "detection-engine");
+    }
 
     public long incrementEvaluated() {
-        return eventsEvaluated.incrementAndGet();
+        eventsEvaluated.increment();
+        return (long) eventsEvaluated.count();
     }
 
     public long incrementGenerated() {
-        return alertsGenerated.incrementAndGet();
+        alertsGenerated.increment();
+        return (long) alertsGenerated.count();
     }
 
     public long eventsEvaluated() {
-        return eventsEvaluated.get();
+        return (long) eventsEvaluated.count();
     }
 
     public long alertsGenerated() {
-        return alertsGenerated.get();
+        return (long) alertsGenerated.count();
     }
 
     public void reset() {
-        eventsEvaluated.set(0);
-        alertsGenerated.set(0);
+        // Micrometer counters are monotonic and cannot be reset; reported values are cumulative.
     }
 }

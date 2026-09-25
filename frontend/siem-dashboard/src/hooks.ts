@@ -7,9 +7,12 @@ import {
   type CreateIncidentInput,
   type DetectionRule,
   type DetectionSummary,
+  type EventSeverity,
   type Incident,
   type IngestEventInput,
   type LinkAlertInput,
+  type SearchHit,
+  type SearchSummary,
   type SecurityEvent,
   type SiemAlert,
   type UpdateIncidentInput
@@ -60,6 +63,28 @@ export function useRules() {
     queryKey: ["rules"],
     queryFn: () => apiGet<DetectionRule[]>("/api/rules"),
     refetchInterval: 30_000
+  });
+}
+
+export function useRuleUpdate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      action,
+      severity
+    }: {
+      id: string;
+      action: "enable" | "disable" | "severity";
+      severity?: EventSeverity;
+    }) =>
+      action === "severity"
+        ? apiPost<DetectionRule>(`/api/rules/${id}/severity`, { severity })
+        : apiPost<DetectionRule>(`/api/rules/${id}/${action}`),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["rules"] });
+      void queryClient.invalidateQueries({ queryKey: ["detection-summary"] });
+    }
   });
 }
 
@@ -148,5 +173,29 @@ export function useLinkAlertToIncident(id: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["incidents", id] });
     }
+  });
+}
+
+export function useSearchSummary() {
+  return useQuery({
+    queryKey: ["search-summary"],
+    queryFn: () => apiGet<SearchSummary>("/api/search/summary"),
+    refetchInterval: 15_000
+  });
+}
+
+export function useSearchEvents(query: string) {
+  return useQuery({
+    queryKey: ["search", "events", query],
+    queryFn: () => apiGet<SearchHit[]>(`/api/search/events?q=${encodeURIComponent(query)}`),
+    enabled: query.trim().length > 0
+  });
+}
+
+export function useSearchAlerts(query: string) {
+  return useQuery({
+    queryKey: ["search", "alerts", query],
+    queryFn: () => apiGet<SearchHit[]>(`/api/search/alerts?q=${encodeURIComponent(query)}`),
+    enabled: query.trim().length > 0
   });
 }

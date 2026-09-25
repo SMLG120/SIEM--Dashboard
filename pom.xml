@@ -30,6 +30,7 @@
         <module>backend/incident-service</module>
         <module>backend/threat-intelligence-service</module>
         <module>backend/audit-service</module>
+        <module>backend/search-service</module>
     </modules>
 
     <dependencyManagement>

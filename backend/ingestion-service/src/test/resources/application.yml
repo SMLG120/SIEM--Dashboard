@@ -1,0 +1,15 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8088/realms/enterprise-siem}
+          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8088/realms/enterprise-siem/protocol/openid-connect/certs}
+  datasource:
+    url: jdbc:h2:mem:siem;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always

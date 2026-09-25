@@ -10,6 +10,7 @@ import { IncidentDetailPage } from "./pages/IncidentDetailPage";
 import { IncidentsPage } from "./pages/IncidentsPage";
 import { IntelligencePage } from "./pages/IntelligencePage";
 import { PlatformPage } from "./pages/PlatformPage";
+import { SearchPage } from "./pages/SearchPage";
 
 const initialAuthState: AuthState = {
   initialized: false,
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="incidents" element={<IncidentsPage auth={auth} />} />
           <Route path="incidents/:incidentId" element={<IncidentDetailPage auth={auth} />} />
           <Route path="intelligence" element={<IntelligencePage auth={auth} />} />
+          <Route path="search" element={<SearchPage />} />
           <Route path="platform" element={<PlatformPage />} />
           <Route path="*" element={<DashboardPage />} />
         </Route>

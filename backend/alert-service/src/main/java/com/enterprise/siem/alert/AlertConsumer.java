@@ -11,14 +11,17 @@ public class AlertConsumer {
     private static final Logger log = LoggerFactory.getLogger(AlertConsumer.class);
 
     private final AlertStore alertStore;
+    private final AlertRepository alertRepository;
 
-    public AlertConsumer(AlertStore alertStore) {
+    public AlertConsumer(AlertStore alertStore, AlertRepository alertRepository) {
         this.alertStore = alertStore;
+        this.alertRepository = alertRepository;
     }
 
     @KafkaListener(topics = "siem.alerts", groupId = "alert-service")
     public void onAlert(SiemAlert alert) {
         alertStore.add(alert);
+        alertRepository.insert(alert);
         log.info("Stored alert {} from rule {}", alert.id(), alert.ruleId());
     }
 }

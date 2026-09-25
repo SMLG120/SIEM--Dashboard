@@ -1,0 +1,164 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            {
+              "options": { "0": { "color": "red", "text": "DOWN" } },
+              "type": "value"
+            },
+            {
+              "options": { "1": { "color": "green", "text": "UP" } },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "/^.*$/", "values": false }, "textMode": "auto" },
+      "pluginVersion": "11.1.0",
+      "targets": [
+        {
+          "expr": "up",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Service Targets",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 20, "lineWidth": 2, "showPoints": "never" },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "expr": "sum by (application) (rate(http_server_requests_seconds_count[5m]))",
+          "legendFormat": "{{application}}",
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP Request Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "fillOpacity": 15, "lineWidth": 2, "showPoints": "never" },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 4 },
+      "id": 3,
+      "options": { "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        {
+          "expr": "rate(siem_detection_events_evaluated_total[5m])",
+          "legendFormat": "events evaluated /s",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(siem_detection_alerts_generated_total[5m])",
+          "legendFormat": "alerts generated /s",
+          "refId": "B"
+        }
+      ],
+      "title": "Detection Engine Throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "Prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "unit": "dtdurations"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 7 },
+      "id": 4,
+      "options": { "legend": { "calcs": ["lastNotNull"], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [
+        {
+          "expr": "process_uptime_seconds{application=\"api-gateway\"}",
+          "legendFormat": "gateway",
+          "refId": "A"
+        },
+        {
+          "expr": "process_uptime_seconds{application=\"search-service\"}",
+          "legendFormat": "search",
+          "refId": "B"
+        },
+        {
+          "expr": "process_uptime_seconds{application=\"detection-service\"}",
+          "legendFormat": "detection",
+          "refId": "C"
+        }
+      ],
+      "title": "Process Uptime",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["siem"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "SIEM Overview",
+  "uid": "siem-overview",
+  "version": 1,
+  "weekStart": ""
+}

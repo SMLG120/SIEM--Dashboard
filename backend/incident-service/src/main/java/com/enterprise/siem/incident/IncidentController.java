@@ -27,9 +27,11 @@ import java.util.UUID;
 @RequestMapping("/api/incidents")
 public class IncidentController {
     private final IncidentStore store;
+    private final IncidentRepository repository;
 
-    public IncidentController(IncidentStore store) {
+    public IncidentController(IncidentStore store, IncidentRepository repository) {
         this.store = store;
+        this.repository = repository;
     }
 
     @GetMapping
@@ -68,6 +70,7 @@ public class IncidentController {
         ).appendTimeline(new TimelineEntry(Instant.now(), actor(jwt), "INCIDENT_CREATED",
                 "Manually created by " + actor(jwt)));
         store.add(incident);
+        repository.save(incident);
         return incident;
     }
 
@@ -76,7 +79,7 @@ public class IncidentController {
                                    @RequestBody UpdateIncidentRequest request,
                                    @AuthenticationPrincipal Jwt jwt) {
         String user = actor(jwt);
-        return store.update(id, incident -> {
+        Incident updated = store.update(id, incident -> {
             Incident next = incident;
             if (request.title() != null && !request.title().isBlank()) {
                 next = next.withTitle(request.title());
@@ -102,6 +105,8 @@ public class IncidentController {
             }
             return next;
         }).orElseThrow(() -> new NotFoundException("Incident not found: " + id));
+        repository.save(updated);
+        return updated;
     }
 
     @PostMapping("/{id}/notes")
@@ -120,7 +125,8 @@ public class IncidentController {
         );
         store.update(id, incident -> incident
                 .appendNote(note)
-                .appendTimeline(new TimelineEntry(Instant.now(), user, "NOTE_ADDED", "Note by " + user)));
+                .appendTimeline(new TimelineEntry(Instant.now(), user, "NOTE_ADDED", "Note by " + user)))
+                .ifPresent(repository::save);
         return note;
     }
 
@@ -151,6 +157,9 @@ public class IncidentController {
                     .appendAlert(alert)
                     .appendTimeline(new TimelineEntry(Instant.now(), user, "ALERT_LINKED",
                             "Linked alert " + alert.id()));
+        }).map(persisted -> {
+            repository.save(persisted);
+            return persisted;
         }).orElseThrow(() -> new NotFoundException("Incident not found: " + id));
     }
 

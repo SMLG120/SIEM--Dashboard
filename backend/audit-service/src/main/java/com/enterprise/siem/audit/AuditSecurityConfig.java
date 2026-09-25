@@ -19,7 +19,7 @@ class AuditSecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                         .requestMatchers("/api/audit/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
                         .anyRequest().authenticated()
                 )

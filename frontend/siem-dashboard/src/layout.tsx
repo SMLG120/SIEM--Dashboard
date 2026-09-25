@@ -1,4 +1,4 @@
-import { Activity, Database, Globe2, LogOut, RadioTower, Shield, ShieldAlert, Siren, UserRound } from "lucide-react";
+import { Activity, Database, Globe2, LogOut, RadioTower, Search, Shield, ShieldAlert, Siren, UserRound } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { logout, type AuthState } from "./auth";
 
@@ -8,6 +8,7 @@ const pageTitles: Record<string, { title: string; subtitle: string }> = {
   "/alerts": { title: "Security Alerts", subtitle: "Detection and triage" },
   "/incidents": { title: "Incidents", subtitle: "Alert correlation and investigation" },
   "/intelligence": { title: "Threat Intelligence", subtitle: "Detection rules and indicators" },
+  "/search": { title: "Search & Analytics", subtitle: "Indexed event and alert search" },
   "/platform": { title: "Platform", subtitle: "Infrastructure and services" }
 };
 
@@ -38,6 +39,9 @@ export function AppLayout({ auth }: { auth: AuthState }) {
           </NavLink>
           <NavLink to="/intelligence">
             <Globe2 size={18} /> Intelligence
+          </NavLink>
+          <NavLink to="/search">
+            <Search size={18} /> Search
           </NavLink>
           <NavLink to="/platform">
             <Database size={18} /> Platform
