@@ -15,6 +15,16 @@
   "displayName": "Enterprise SIEM",
   "registrationAllowed": false,
   "resetPasswordAllowed": true,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@siem.local",
+    "fromDisplayName": "Enterprise SIEM",
+    "replyTo": "",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
   "loginWithEmailAllowed": true,
   "roles": {
     "realm": [

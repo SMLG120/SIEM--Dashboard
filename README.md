@@ -80,6 +80,7 @@ Open **http://localhost:15173** and sign in as `admin` with the `SIEM_DEMO_PASSW
 | Keycloak admin | http://localhost:18088/admin |
 | Grafana | http://localhost:13000 |
 | Prometheus | http://localhost:19090 |
+| Mailpit (local inbox) | http://localhost:18025 |
 
 All ports bind to `127.0.0.1` in a dedicated range, so the stack doesn't clash with a local Postgres or other dev servers. Every port can be changed in `.env`; see [docs/deployment.md](docs/deployment.md).
 
@@ -93,6 +94,8 @@ All ports bind to `127.0.0.1` in a dedicated range, so the stack doesn't clash w
 | `sam.viewer` | `VIEWER` | Read-only alert visibility |
 
 All demo users share `SIEM_DEMO_PASSWORD`. Accounts lock temporarily after 5 failed sign-ins.
+
+**Forgot password:** use the link on the sign-in page. Keycloak sends the reset email to a local [Mailpit](https://mailpit.axllent.org/) inbox at http://localhost:18025, so no real mail is sent.
 
 ## Detection Rules
 
@@ -153,7 +156,7 @@ docs/                           Architecture, API, deployment, operations, secur
 ## Development
 
 ```bash
-mvn clean verify                                   # build + 32 backend tests (needs Java 21)
+mvn clean verify                                   # build + 35 backend tests (needs Java 21)
 cd frontend/siem-dashboard && npm ci && npm run dev  # console on http://localhost:15173 against the Compose backend
 ```
 

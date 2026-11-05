@@ -24,6 +24,7 @@ Every port is published on `127.0.0.1` only and uses a dedicated range so the st
 | 19090 | Prometheus | `SIEM_PROMETHEUS_PORT` |
 | 13000 | Grafana | `SIEM_GRAFANA_PORT` |
 | 18090 | Kafka UI (`tools` profile) | `SIEM_KAFKA_UI_PORT` |
+| 18025 | Mailpit inbox for Keycloak emails (password reset) | `SIEM_MAILPIT_PORT` |
 
 Backend services other than the gateway are internal to the Compose network and are reached through the gateway only.
 
@@ -39,6 +40,8 @@ There are no built-in passwords: Compose refuses to start until these are set in
 - `KAFKA_UI_PASSWORD`
 
 The realm enables brute-force lockout and adds an `api-gateway` audience to tokens issued to `siem-dashboard` and `siem-demo`; every service rejects tokens without that audience (`OIDC_AUDIENCE`).
+
+Keycloak sends email (password reset) through the bundled Mailpit catcher; open http://localhost:18025 to read it. For a real deployment, replace `smtpServer` in the realm template with your SMTP relay.
 
 Local-only caveats: Kafka uses PLAINTEXT, OpenSearch runs with its security plugin disabled, and Keycloak runs `start-dev`. They are only reachable from this machine; enable SASL/TLS, the OpenSearch security plugin and Keycloak production mode before exposing the stack anywhere else.
 

@@ -4,6 +4,7 @@ export function PlatformPage() {
     { name: "Kafka UI (--profile tools)", url: "http://localhost:18090" },
     { name: "Keycloak", url: "http://localhost:18088" },
     { name: "Grafana", url: "http://localhost:13000" },
+    { name: "Mailpit (reset emails)", url: "http://localhost:18025" },
     { name: "PostgreSQL", url: "tcp://localhost:15432" },
     { name: "Redis", url: "tcp://localhost:16379" },
     { name: "Kafka (bootstrap)", url: "localhost:19092" }
