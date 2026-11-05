@@ -18,19 +18,19 @@ class RuleChangeControllerTest {
 
     @Test
     void disableThenEnableThroughController() {
-        DetectionRule disabled = controller.disable("SIEM-1001");
+        DetectionRule disabled = controller.disable("SIEM-1001", null);
         Assertions.assertThat(disabled.enabled()).isFalse();
         Assertions.assertThat(published).hasSize(1);
         Assertions.assertThat(published.get(0).action()).isEqualTo(RuleChangeAction.DISABLE);
 
-        DetectionRule reEnabled = controller.enable("SIEM-1001");
+        DetectionRule reEnabled = controller.enable("SIEM-1001", null);
         Assertions.assertThat(reEnabled.enabled()).isTrue();
         Assertions.assertThat(published).hasSize(2);
     }
 
     @Test
     void setSeverityThroughController() {
-        DetectionRule updated = controller.setSeverity("SIEM-1005", new RuleChangeController.SeverityRequest("high"));
+        DetectionRule updated = controller.setSeverity("SIEM-1005", new RuleChangeController.SeverityRequest("high"), null);
         Assertions.assertThat(updated.severity()).isEqualTo(EventSeverity.HIGH);
         Assertions.assertThat(published.get(0).severity()).isEqualTo(EventSeverity.HIGH);
     }
@@ -38,14 +38,14 @@ class RuleChangeControllerTest {
     @Test
     void unknownSeverityIsRejected() {
         Assertions.assertThatThrownBy(() ->
-                        controller.setSeverity("SIEM-1001", new RuleChangeController.SeverityRequest("bogus")))
+                        controller.setSeverity("SIEM-1001", new RuleChangeController.SeverityRequest("bogus"), null))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> Assertions.assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
 
     @Test
     void unknownRuleIs404() {
-        Assertions.assertThatThrownBy(() -> controller.enable("SIEM-9999"))
+        Assertions.assertThatThrownBy(() -> controller.enable("SIEM-9999", null))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> Assertions.assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }

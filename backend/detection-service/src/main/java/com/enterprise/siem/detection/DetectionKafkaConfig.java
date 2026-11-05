@@ -17,9 +17,11 @@ public class DetectionKafkaConfig {
 
     @Bean
     NewTopic rulesTopic() {
+        // Rule changes are replayed on startup, so they must never expire.
         return TopicBuilder.name(RuleChangeConsumer.RULES_TOPIC)
                 .partitions(3)
                 .replicas(1)
+                .config("retention.ms", "-1")
                 .build();
     }
 }

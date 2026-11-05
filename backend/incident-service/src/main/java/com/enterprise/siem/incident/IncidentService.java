@@ -43,9 +43,9 @@ public class IncidentService {
                                     Instant.now(),
                                     "system",
                                     "ALERT_LINKED",
-                                    "Linked alert " + alert.id() + " (" + alert.ruleName() + ")")))
+                                    "Linked alert " + alert.id() + " (" + alert.ruleName() + ")")),
+                            repository::save)
                     .orElse(incident);
-            repository.save(updated);
             kafka.publish(updated.id(), updated.title(), "ALERT_LINKED");
             return;
         }
@@ -60,8 +60,8 @@ public class IncidentService {
                 .appendAlert(toRelated(alert))
                 .appendTimeline(new TimelineEntry(Instant.now(), "system", "INCIDENT_CREATED",
                         "Incident created from source " + alert.sourceIp()));
-        store.add(withAlert);
         repository.save(withAlert);
+        store.add(withAlert);
         log.info("Created incident {} for alert {}", withAlert.id(), alert.id());
         kafka.publish(withAlert.id(), withAlert.title(), "INCIDENT_CREATED");
     }
@@ -107,8 +107,7 @@ public class IncidentService {
             TimelineEntry entry = new TimelineEntry(Instant.now(), actor, "STATUS_CHANGED",
                     current.status() + " -> " + status);
             return next.appendTimeline(entry);
-        }).orElseThrow(() -> new com.enterprise.siem.incident.NotFoundException("Incident not found: " + id));
-        repository.save(updated);
+        }, repository::save).orElseThrow(() -> new NotFoundException("Incident not found: " + id));
         return updated;
     }
 }

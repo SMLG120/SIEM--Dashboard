@@ -13,22 +13,27 @@ function SeverityBar({ bySeverity }: { bySeverity: Record<string, number> }) {
   if (total === 0) {
     return <span className="muted-block">No documents indexed yet.</span>;
   }
+  const present = order.filter((severity) => (bySeverity[severity] ?? 0) > 0);
   return (
-    <div className="severity-strip">
-      {order.map((severity) => {
-        const value = bySeverity[severity] ?? 0;
-        if (value === 0) return null;
-        return (
+    <div className="severity-strip-wrap">
+      <div className="severity-strip" role="img" aria-label={present.map((s) => `${s} ${bySeverity[s]}`).join(", ")}>
+        {present.map((severity) => (
           <span
             key={severity}
             className={`severity-fraction ${severity.toLowerCase()}`}
-            style={{ width: `${(value / total) * 100}%` }}
-            title={`${severity}: ${value}`}
-          >
-            {severity}
-          </span>
-        );
-      })}
+            style={{ width: `${(bySeverity[severity] / total) * 100}%` }}
+            title={`${severity}: ${bySeverity[severity]}`}
+          />
+        ))}
+      </div>
+      <ul className="severity-legend">
+        {present.map((severity) => (
+          <li key={severity}>
+            <span className={`severity-fraction ${severity.toLowerCase()}`} />
+            {severity.charAt(0) + severity.slice(1).toLowerCase()} <strong>{bySeverity[severity]}</strong>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -64,7 +69,7 @@ function SearchPanel({
       {loading ? (
         <div className="empty-state">Searching...</div>
       ) : query.trim().length === 0 ? (
-        <div className="empty-state">Type a query to search {title.toLowerCase()}.</div>
+        <div className="empty-state">Type a query to search indexed {title.split(" ")[0].toLowerCase()}s.</div>
       ) : (
         <div className="data-table search-results">
           <div className="data-row data-head search-grid">

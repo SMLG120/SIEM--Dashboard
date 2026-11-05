@@ -6,6 +6,7 @@ import com.enterprise.siem.incident.model.IncidentNote;
 import com.enterprise.siem.incident.model.IncidentStatus;
 import com.enterprise.siem.incident.model.RelatedAlert;
 import com.enterprise.siem.incident.model.TimelineEntry;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -56,11 +57,8 @@ public class IncidentController {
     }
 
     @PostMapping
-    public Incident createIncident(@RequestBody CreateIncidentRequest request,
+    public Incident createIncident(@Valid @RequestBody CreateIncidentRequest request,
                                    @AuthenticationPrincipal Jwt jwt) {
-        if (request.title() == null || request.title().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Incident title is required");
-        }
         EventSeverity severity = request.severity() == null ? EventSeverity.MEDIUM : request.severity();
         Incident incident = Incident.create(
                 "INC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
@@ -69,14 +67,14 @@ public class IncidentController {
                 severity
         ).appendTimeline(new TimelineEntry(Instant.now(), actor(jwt), "INCIDENT_CREATED",
                 "Manually created by " + actor(jwt)));
-        store.add(incident);
         repository.save(incident);
+        store.add(incident);
         return incident;
     }
 
     @PatchMapping("/{id}")
     public Incident updateIncident(@PathVariable String id,
-                                   @RequestBody UpdateIncidentRequest request,
+                                   @Valid @RequestBody UpdateIncidentRequest request,
                                    @AuthenticationPrincipal Jwt jwt) {
         String user = actor(jwt);
         Incident updated = store.update(id, incident -> {
@@ -104,18 +102,14 @@ public class IncidentController {
                                 "Assigned to " + request.assignedTo()));
             }
             return next;
-        }).orElseThrow(() -> new NotFoundException("Incident not found: " + id));
-        repository.save(updated);
+        }, repository::save).orElseThrow(() -> new NotFoundException("Incident not found: " + id));
         return updated;
     }
 
     @PostMapping("/{id}/notes")
     public IncidentNote addNote(@PathVariable String id,
-                                @RequestBody AddNoteRequest request,
+                                @Valid @RequestBody AddNoteRequest request,
                                 @AuthenticationPrincipal Jwt jwt) {
-        if (request.text() == null || request.text().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Note text is required");
-        }
         String user = actor(jwt);
         IncidentNote note = new IncidentNote(
                 "NT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
@@ -124,19 +118,17 @@ public class IncidentController {
                 Instant.now()
         );
         store.update(id, incident -> incident
-                .appendNote(note)
-                .appendTimeline(new TimelineEntry(Instant.now(), user, "NOTE_ADDED", "Note by " + user)))
-                .ifPresent(repository::save);
+                        .appendNote(note)
+                        .appendTimeline(new TimelineEntry(Instant.now(), user, "NOTE_ADDED", "Note by " + user)),
+                repository::save)
+                .orElseThrow(() -> new NotFoundException("Incident not found: " + id));
         return note;
     }
 
     @PostMapping("/{id}/alerts")
     public Incident linkAlert(@PathVariable String id,
-                              @RequestBody LinkAlertRequest request,
+                              @Valid @RequestBody LinkAlertRequest request,
                               @AuthenticationPrincipal Jwt jwt) {
-        if (request.alertId() == null || request.alertId().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "alertId is required");
-        }
         String user = actor(jwt);
         EventSeverity severity = request.severity() == null ? EventSeverity.MEDIUM : request.severity();
         RelatedAlert alert = new RelatedAlert(
@@ -157,10 +149,7 @@ public class IncidentController {
                     .appendAlert(alert)
                     .appendTimeline(new TimelineEntry(Instant.now(), user, "ALERT_LINKED",
                             "Linked alert " + alert.id()));
-        }).map(persisted -> {
-            repository.save(persisted);
-            return persisted;
-        }).orElseThrow(() -> new NotFoundException("Incident not found: " + id));
+        }, repository::save).orElseThrow(() -> new NotFoundException("Incident not found: " + id));
     }
 
     private String actor(Jwt jwt) {

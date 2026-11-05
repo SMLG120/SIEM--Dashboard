@@ -42,7 +42,7 @@ export default function App() {
         <div className="auth-panel">
           <Shield size={38} />
           <h1>Enterprise SIEM</h1>
-          <p className="auth-hint">Sign in with a realm account (e.g. admin / admin123)</p>
+          <p className="auth-hint">Security operations console · sign in with your SOC account</p>
           <button type="button" className="primary-action" onClick={() => void login()}>
             <LogIn size={18} />
             Sign In

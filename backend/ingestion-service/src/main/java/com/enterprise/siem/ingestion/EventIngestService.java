@@ -37,8 +37,8 @@ public class EventIngestService {
                 request.userName(),
                 request.message()
         );
-        eventsStore.add(event);
         eventRepository.insert(event);
+        eventsStore.add(event);
         kafkaTemplate.send(EVENTS_TOPIC, event.id(), event);
         return event;
     }

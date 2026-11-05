@@ -214,7 +214,7 @@ export function EventsPage({ auth }: { auth: AuthState }) {
           </div>
         ) : (
           <div className="data-table">
-            <div className="data-row data-head">
+            <div className="data-row data-head event-grid">
               <span>Time</span>
               <span>Event</span>
               <span>Severity</span>
@@ -223,7 +223,7 @@ export function EventsPage({ auth }: { auth: AuthState }) {
               <span>User</span>
             </div>
             {events.map((event) => (
-              <div className="data-row" key={event.id}>
+              <div className="data-row event-grid" key={event.id}>
                 <span>{formatTime(event.timestamp)}</span>
                 <span>
                   <strong>{event.eventType}</strong>

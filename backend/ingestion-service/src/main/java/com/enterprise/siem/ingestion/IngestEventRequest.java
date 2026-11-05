@@ -1,6 +1,8 @@
 package com.enterprise.siem.ingestion;
 
 import com.enterprise.siem.common.model.EventSeverity;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -9,11 +11,11 @@ import java.time.Instant;
 
 public record IngestEventRequest(
         @NotBlank(message = "eventType is required")
-        @Size(max = 100)
+        @Size(max = 64)
         String eventType,
         @NotNull(message = "severity is required")
         EventSeverity severity,
-        @Size(max = 80)
+        @Size(max = 64)
         String category,
         @Size(max = 64)
         String sourceIp,
@@ -21,6 +23,8 @@ public record IngestEventRequest(
         String sourceHost,
         @Size(max = 64)
         String destinationIp,
+        @Min(0)
+        @Max(65535)
         Integer destinationPort,
         @Size(max = 128)
         String userName,

@@ -17,6 +17,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/events")
 public class EventIngestionController {
+    static final int MAX_BATCH_SIZE = 500;
+
     private final EventIngestService ingestService;
     private final EventsStore eventsStore;
 
@@ -44,6 +46,10 @@ public class EventIngestionController {
 
     @PostMapping("/batch")
     public ResponseEntity<List<SecurityEvent>> ingestBatch(@Valid @RequestBody List<@Valid IngestEventRequest> requests) {
+        if (requests.isEmpty() || requests.size() > MAX_BATCH_SIZE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Batch must contain between 1 and " + MAX_BATCH_SIZE + " events");
+        }
         List<SecurityEvent> created = requests.stream().map(ingestService::ingest).toList();
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }

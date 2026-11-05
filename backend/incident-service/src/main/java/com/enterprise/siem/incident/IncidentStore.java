@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 @Component
@@ -47,6 +48,15 @@ public class IncidentStore {
     }
 
     public Optional<Incident> update(String id, Function<Incident, Incident> updater) {
+        return update(id, updater, ignored -> {
+        });
+    }
+
+    /**
+     * Applies {@code updater} and runs {@code persist} on the result before the in-memory copy
+     * changes, so a failed database write leaves the store untouched.
+     */
+    public Optional<Incident> update(String id, Function<Incident, Incident> updater, Consumer<Incident> persist) {
         lock.lock();
         try {
             Incident current = byId.get(id);
@@ -54,6 +64,9 @@ public class IncidentStore {
                 return Optional.empty();
             }
             Incident updated = updater.apply(current);
+            if (updated != current) {
+                persist.accept(updated);
+            }
             int index = incidents.indexOf(current);
             if (index >= 0) {
                 incidents.set(index, updated);

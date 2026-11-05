@@ -1,9 +1,30 @@
 {
   "realm": "enterprise-siem",
   "enabled": true,
+  "sslRequired": "external",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "quickLoginCheckMilliSeconds": 1000,
+  "minimumQuickLoginWaitSeconds": 60,
+  "passwordPolicy": "length(12)",
+  "accessTokenLifespan": 300,
   "displayName": "Enterprise SIEM",
   "registrationAllowed": false,
   "resetPasswordAllowed": true,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@siem.local",
+    "fromDisplayName": "Enterprise SIEM",
+    "replyTo": "",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
   "loginWithEmailAllowed": true,
   "roles": {
     "realm": [
@@ -36,14 +57,29 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
-        "http://localhost:5173/*"
+        "__SIEM_FRONTEND_ORIGIN__/*"
       ],
       "webOrigins": [
-        "http://localhost:5173"
+        "__SIEM_FRONTEND_ORIGIN__"
       ],
       "attributes": {
-        "pkce.code.challenge.method": "S256"
-      }
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "__SIEM_FRONTEND_ORIGIN__/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "api-gateway-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "api-gateway",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "api-gateway",
@@ -63,7 +99,21 @@
       "publicClient": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": false
+      "serviceAccountsEnabled": false,
+      "protocolMappers": [
+        {
+          "name": "api-gateway-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "api-gateway",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [

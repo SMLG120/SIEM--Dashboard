@@ -5,12 +5,14 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8088/realms/enterprise-siem}
-          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8088/realms/enterprise-siem/protocol/openid-connect/certs}
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:18088/realms/enterprise-siem}
+          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:18088/realms/enterprise-siem/protocol/openid-connect/certs}
+          audiences: ${OIDC_AUDIENCE:api-gateway}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      port: ${REDIS_PORT:16379}
+      password: ${REDIS_PASSWORD:}
   cloud:
     gateway:
       default-filters:
@@ -20,22 +22,6 @@ spring:
             redis-rate-limiter.replenishRate: ${SIEM_RATE_LIMIT_REPLENISH:20}
             redis-rate-limiter.burstCapacity: ${SIEM_RATE_LIMIT_BURST:40}
             key-resolver: "#{@userKeyResolver}"
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowed-origins:
-              - "http://localhost:5173"
-            allowed-methods:
-              - GET
-              - POST
-              - PUT
-              - PATCH
-              - DELETE
-              - OPTIONS
-            allowed-headers: "*"
-            exposed-headers:
-              - "X-Correlation-Id"
-            allow-credentials: false
       routes:
             - id: auth-service
               uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
@@ -72,6 +58,11 @@ spring:
 
 server:
   port: ${SERVER_PORT:8080}
+
+siem:
+  cors:
+    # Applied inside the security filter chain so 401/403 responses carry CORS headers too.
+    allowed-origin: ${SIEM_ALLOWED_ORIGIN:http://localhost:15173}
 
 management:
   endpoints:

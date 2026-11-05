@@ -2,6 +2,7 @@ package com.enterprise.siem.alert;
 
 import com.enterprise.siem.common.model.AlertStatus;
 import com.enterprise.siem.common.model.SiemAlert;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -14,7 +15,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/alerts")
@@ -56,72 +59,48 @@ public class AlertController {
 
     @PostMapping("/{id}/acknowledge")
     public SiemAlert acknowledge(@PathVariable String id) {
-        return updateStatus(id, AlertStatus.ACKNOWLEDGED);
+        return transition(id, EnumSet.of(AlertStatus.OPEN, AlertStatus.ACKNOWLEDGED), AlertStatus.ACKNOWLEDGED);
     }
 
     @PostMapping("/{id}/investigate")
     public SiemAlert investigate(@PathVariable String id) {
-        SiemAlert current = require(id);
-        if (current.status() == AlertStatus.RESOLVED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Resolved alerts cannot be investigated; reopen first");
-        }
-        return updateStatus(id, AlertStatus.INVESTIGATING);
+        return transition(id, EnumSet.of(AlertStatus.OPEN, AlertStatus.ACKNOWLEDGED, AlertStatus.INVESTIGATING),
+                AlertStatus.INVESTIGATING);
     }
 
     @PostMapping("/{id}/resolve")
     public SiemAlert resolve(@PathVariable String id) {
-        return updateStatus(id, AlertStatus.RESOLVED);
+        return transition(id, EnumSet.complementOf(EnumSet.of(AlertStatus.RESOLVED)), AlertStatus.RESOLVED);
     }
 
     @PostMapping("/{id}/reopen")
     public SiemAlert reopen(@PathVariable String id) {
-        SiemAlert current = require(id);
-        if (current.status() != AlertStatus.RESOLVED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only resolved alerts can be reopened");
-        }
-        return updateStatus(id, AlertStatus.OPEN);
+        return transition(id, EnumSet.of(AlertStatus.RESOLVED), AlertStatus.OPEN);
     }
 
     @PostMapping("/{id}/assign")
-    public AlertDetail assign(@PathVariable String id, @RequestBody AssignRequest request) {
-        if (request.assignedTo() == null || request.assignedTo().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "assignedTo is required");
-        }
-        return alertStore.assign(id, request.assignedTo())
-                .map(ignored -> {
-                    alertRepository.assign(id, request.assignedTo());
-                    return alertStore.workflow(id).orElseThrow();
-                })
+    public AlertDetail assign(@PathVariable String id, @Valid @RequestBody AssignRequest request) {
+        String assignee = request.assignedTo().trim();
+        return alertStore.assign(id, assignee, () -> alertRepository.assign(id, assignee))
+                .map(ignored -> alertStore.workflow(id).orElseThrow())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found: " + id));
     }
 
     @PostMapping("/{id}/notes")
     public AlertNote addNote(@PathVariable String id,
-                             @RequestBody AlertNoteRequest request,
+                             @Valid @RequestBody AlertNoteRequest request,
                              @AuthenticationPrincipal Jwt jwt) {
-        if (request.text() == null || request.text().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Note text is required");
+        return alertStore.addNote(id, actor(jwt), request.text(), note -> alertRepository.insertNote(id, note))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found: " + id));
+    }
+
+    private SiemAlert transition(String id, Set<AlertStatus> allowedFrom, AlertStatus status) {
+        try {
+            return alertStore.transition(id, allowedFrom, status, alertRepository::updateStatus)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found: " + id));
+        } catch (AlertStore.InvalidTransitionException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         }
-        return alertStore.addNote(id, actor(jwt), request.text())
-                .map(note -> {
-                    alertRepository.insertNote(id, note);
-                    return note;
-                })
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found: " + id));
-    }
-
-    private SiemAlert require(String id) {
-        return alertStore.byId(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found: " + id));
-    }
-
-    private SiemAlert updateStatus(String id, AlertStatus status) {
-        return alertStore.updateStatus(id, status)
-                .map(updated -> {
-                    alertRepository.updateStatus(updated);
-                    return updated;
-                })
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found: " + id));
     }
 
     private String actor(Jwt jwt) {

@@ -20,8 +20,10 @@ public class AlertCorrelationConsumer {
     public void onAlert(SiemAlert alert) {
         try {
             incidentService.correlate(alert);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
+            // Rethrow so the container's error handler retries and logs the record instead of dropping it.
             log.error("Correlation failed for alert {}: {}", alert.id(), e.getMessage());
+            throw e;
         }
     }
 }

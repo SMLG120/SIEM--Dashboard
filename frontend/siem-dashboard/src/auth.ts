@@ -17,7 +17,7 @@ export type AuthState = {
   token?: string;
 };
 
-const keycloakUrl = import.meta.env.VITE_KEYCLOAK_URL ?? "http://localhost:8088";
+const keycloakUrl = import.meta.env.VITE_KEYCLOAK_URL ?? "http://localhost:18088";
 const keycloakRealm = import.meta.env.VITE_KEYCLOAK_REALM ?? "enterprise-siem";
 const keycloakClientId = import.meta.env.VITE_KEYCLOAK_CLIENT_ID ?? "siem-dashboard";
 

@@ -27,7 +27,11 @@ spec:
             - name: KC_BOOTSTRAP_ADMIN_USERNAME
               value: "admin"
             - name: KC_BOOTSTRAP_ADMIN_PASSWORD
-              value: "admin123"
+              valueFrom:
+                secretKeyRef:
+                  # kubectl create secret generic siem-keycloak-admin --from-literal=password=...
+                  name: siem-keycloak-admin
+                  key: password
             - name: KC_HTTP_ENABLED
               value: "true"
             - name: KC_HEALTH_ENABLED
