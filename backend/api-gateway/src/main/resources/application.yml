@@ -5,12 +5,14 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8088/realms/enterprise-siem}
-          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8088/realms/enterprise-siem/protocol/openid-connect/certs}
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:18088/realms/enterprise-siem}
+          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:18088/realms/enterprise-siem/protocol/openid-connect/certs}
+          audiences: ${OIDC_AUDIENCE:api-gateway}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
+      port: ${REDIS_PORT:16379}
+      password: ${REDIS_PASSWORD:}
   cloud:
     gateway:
       default-filters:
@@ -24,7 +26,7 @@ spring:
         cors-configurations:
           '[/**]':
             allowed-origins:
-              - "http://localhost:5173"
+              - "${SIEM_ALLOWED_ORIGIN:http://localhost:15173}"
             allowed-methods:
               - GET
               - POST

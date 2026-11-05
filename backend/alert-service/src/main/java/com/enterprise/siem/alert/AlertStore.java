@@ -6,11 +6,14 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -27,6 +30,9 @@ public class AlertStore {
     public void add(SiemAlert alert) {
         lock.lock();
         try {
+            if (byId.containsKey(alert.id())) {
+                return; // redelivered Kafka record
+            }
             if (alerts.size() >= MAX_ALERTS) {
                 SiemAlert evicted = alerts.remove(alerts.size() - 1);
                 byId.remove(evicted.id());
@@ -54,13 +60,28 @@ public class AlertStore {
     }
 
     public Optional<SiemAlert> updateStatus(String id, AlertStatus status) {
+        return transition(id, EnumSet.allOf(AlertStatus.class), status, ignored -> {
+        });
+    }
+
+    /**
+     * Atomically moves an alert to {@code status} if its current status is in {@code allowedFrom}.
+     * {@code persist} runs under the lock before the in-memory state changes, so a failed
+     * database write leaves the store untouched.
+     */
+    public Optional<SiemAlert> transition(String id, Set<AlertStatus> allowedFrom, AlertStatus status,
+                                          Consumer<SiemAlert> persist) {
         lock.lock();
         try {
             SiemAlert current = byId.get(id);
             if (current == null) {
                 return Optional.empty();
             }
+            if (!allowedFrom.contains(current.status())) {
+                throw new InvalidTransitionException(current.status(), status);
+            }
             SiemAlert updated = current.withStatus(status);
+            persist.accept(updated);
             int index = alerts.indexOf(current);
             if (index >= 0) {
                 alerts.set(index, updated);
@@ -73,11 +94,17 @@ public class AlertStore {
     }
 
     public Optional<SiemAlert> assign(String id, String analyst) {
+        return assign(id, analyst, () -> {
+        });
+    }
+
+    public Optional<SiemAlert> assign(String id, String analyst, Runnable persist) {
         lock.lock();
         try {
             if (!byId.containsKey(id)) {
                 return Optional.empty();
             }
+            persist.run();
             assignedTo.put(id, analyst);
             return Optional.of(byId.get(id));
         } finally {
@@ -86,6 +113,11 @@ public class AlertStore {
     }
 
     public Optional<AlertNote> addNote(String id, String author, String text) {
+        return addNote(id, author, text, ignored -> {
+        });
+    }
+
+    public Optional<AlertNote> addNote(String id, String author, String text, Consumer<AlertNote> persist) {
         lock.lock();
         try {
             if (!byId.containsKey(id)) {
@@ -97,6 +129,7 @@ public class AlertStore {
                     text,
                     Instant.now()
             );
+            persist.accept(note);
             notes.merge(id, new ArrayList<>(List.of(note)), (existing, ignored) ->
                     Stream.concat(existing.stream(), Stream.of(note)).collect(Collectors.toCollection(ArrayList::new)));
             return Optional.of(note);
@@ -141,6 +174,12 @@ public class AlertStore {
             }
         } finally {
             lock.unlock();
+        }
+    }
+
+    public static final class InvalidTransitionException extends RuntimeException {
+        public InvalidTransitionException(AlertStatus from, AlertStatus to) {
+            super("Cannot move alert from " + from + " to " + to);
         }
     }
 }

@@ -287,7 +287,7 @@ export function IncidentDetailPage({ auth }: { auth: AuthState }) {
       </section>
 
       <p className="muted-block">
-        <Link to="/incidents">← Back to incidents</Link>
+        <Link to="/incidents" className="back-link">← Back to incidents</Link>
       </p>
     </div>
   );

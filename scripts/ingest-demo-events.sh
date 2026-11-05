@@ -9,7 +9,7 @@
 #   scripts/ingest-demo-events.sh [path/to/events.json]
 #
 # Requires: curl and jq. Reads credentials from .env (SIEM_DEMO_PASSWORD,
-# KEYCLOAK_ADMIN_*) or the defaults below.
+# SIEM_*_PORT); SIEM_DEMO_PASSWORD has no default and must be set.
 
 set -euo pipefail
 
@@ -23,12 +23,12 @@ if [[ -f "$BASE_DIR/.env" ]]; then
   set +a
 fi
 
-KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8088}"
-GATEWAY_URL="${GATEWAY_URL:-http://localhost:8080}"
+KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:${SIEM_KEYCLOAK_PORT:-18088}}"
+GATEWAY_URL="${GATEWAY_URL:-http://localhost:${SIEM_GATEWAY_PORT:-18080}}"
 REALM="${SIEM_REALM:-enterprise-siem}"
 CLIENT_ID="${SIEM_DEMO_CLIENT_ID:-siem-demo}"
 USERNAME="${SIEM_DEMO_USER:-admin}"
-PASSWORD="${SIEM_DEMO_PASSWORD:-admin123}"
+PASSWORD="${SIEM_DEMO_PASSWORD:?SIEM_DEMO_PASSWORD must be set (see .env.example)}"
 EVENTS_FILE="${1:-$BASE_DIR/sample-data/security-events.json}"
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -68,4 +68,4 @@ RESULT="$(curl -sf -X POST \
 jq -r '.[] | "  + " + .eventType + " [" + .severity + "] " + (.sourceIp // "-")' <<<"$RESULT"
 
 echo ">>> Done. Detection will publish alerts for matching rules."
-echo "    check: $GATEWAY_URL/api/alerts  (Authorization: Bearer $TOKEN)"
+echo "    open the SOC console at http://localhost:${SIEM_FRONTEND_PORT:-15173} to triage them."

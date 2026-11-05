@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Activity, AlertTriangle, Bell, Siren } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fetchServiceStatus, serviceEndpoints, type SecurityEvent, type SiemAlert } from "../api";
 import { useAlerts, useDetectionSummary, useEvents } from "../hooks";
 
@@ -8,16 +8,27 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
-function alertsToEventVolume(alerts: SiemAlert[]) {
-  const buckets = new Map<string, number>();
+const severityRank = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"];
+const severityColor: Record<string, string> = {
+  CRITICAL: "#ff6b7a",
+  HIGH: "#ffb35c",
+  MEDIUM: "#f5d66e",
+  LOW: "#4dd4ac",
+  INFO: "#7db4ee"
+};
+
+/** Alert volume per detection rule, coloured by the highest severity that rule produced. */
+function alertsByRule(alerts: SiemAlert[]) {
+  const byRule = new Map<string, { rule: string; name: string; alerts: number; severity: string }>();
   for (const alert of alerts) {
-    const label = new Date(alert.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    buckets.set(label, (buckets.get(label) ?? 0) + 1);
+    const entry = byRule.get(alert.ruleId) ?? { rule: alert.ruleId, name: alert.ruleName, alerts: 0, severity: "INFO" };
+    entry.alerts += 1;
+    if (severityRank.indexOf(alert.severity) > severityRank.indexOf(entry.severity)) {
+      entry.severity = alert.severity;
+    }
+    byRule.set(alert.ruleId, entry);
   }
-  return [...buckets.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([time, events]) => ({ time, events }))
-    .slice(-12);
+  return [...byRule.values()].sort((a, b) => b.alerts - a.alerts).slice(0, 8);
 }
 
 export function DashboardPage() {
@@ -52,7 +63,7 @@ export function DashboardPage() {
   ];
 
   const recentEvents = events.slice(0, 8);
-  const chartData = alertsToEventVolume(alerts);
+  const chartData = alertsByRule(alerts);
 
   return (
     <div className="page-stack">
@@ -72,8 +83,8 @@ export function DashboardPage() {
       <section className="main-grid">
         <article className="panel chart-panel">
           <div className="panel-heading">
-            <h2>Alerts Over Time</h2>
-            <span>Live stream</span>
+            <h2>Alerts by Detection Rule</h2>
+            <span>{alerts.length} alerts · {chartData.length} rules firing</span>
           </div>
           {chartData.length === 0 ? (
             <div className="empty-state">
@@ -81,20 +92,31 @@ export function DashboardPage() {
               <code>scripts/ingest-demo-events.sh</code>.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="eventFill" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#4dd4ac" stopOpacity={0.62} />
-                    <stop offset="100%" stopColor="#4dd4ac" stopOpacity={0.04} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#213046" vertical={false} />
-                <XAxis dataKey="time" stroke="#7d8da8" tickLine={false} axisLine={false} />
-                <YAxis stroke="#7d8da8" tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={{ background: "#111a29", border: "1px solid #263550" }} />
-                <Area type="monotone" dataKey="events" stroke="#4dd4ac" fill="url(#eventFill)" strokeWidth={3} />
-              </AreaChart>
+            <ResponsiveContainer width="100%" height={360}>
+              <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 24 }}>
+                <CartesianGrid stroke="#213046" horizontal={false} />
+                <XAxis type="number" stroke="#7d8da8" tickLine={false} axisLine={false} allowDecimals={false} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={230}
+                  stroke="#c3cee0"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fontSize: 13 }}
+                />
+                <Tooltip
+                  cursor={{ fill: "#182438" }}
+                  contentStyle={{ background: "#111a29", border: "1px solid #263550", borderRadius: 8 }}
+                  labelStyle={{ color: "#e8eef8" }}
+                  formatter={(value, _name, item) => [`${value} alerts`, item.payload.rule]}
+                />
+                <Bar dataKey="alerts" radius={[0, 6, 6, 0]} barSize={18}>
+                  {chartData.map((entry) => (
+                    <Cell key={entry.rule} fill={severityColor[entry.severity]} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           )}
         </article>
@@ -133,6 +155,7 @@ export function DashboardPage() {
               </div>
             </div>
           )}
+          {summary && <small className="summary-caption">Detection engine counters since last restart</small>}
         </article>
       </section>
 

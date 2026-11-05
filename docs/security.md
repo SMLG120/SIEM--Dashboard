@@ -1,6 +1,6 @@
 # Security
 
-Phase 2 implements Keycloak-backed OAuth2/OpenID Connect authentication and JWT resource-server validation. Phase 3 adds event schema validation and role-gated ingestion/detection/alert APIs.
+Authentication is OAuth2/OpenID Connect through Keycloak. Every service is a JWT resource server that validates the signature, issuer and `api-gateway` audience, and applies role checks of its own in addition to the gateway route rules. Request bodies are validated with Bean Validation before anything reaches Kafka or PostgreSQL.
 
 Secrets are not committed. Local development uses `.env`, which is ignored by Git.
 
@@ -15,8 +15,8 @@ Secrets are not committed. Local development uses `.env`, which is ignored by Gi
 
 ## Local Test Credentials
 
-- Keycloak admin console: `admin` / `admin123`
-- Realm users (`admin`, `sam.admin`, `sam.manager`, `sam.analyst`, `sam.viewer`): password from `SIEM_DEMO_PASSWORD` in `.env` (default `admin123`)
+- Keycloak admin console: `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` from `.env`
+- Realm users (`admin`, `sam.admin`, `sam.manager`, `sam.analyst`, `sam.viewer`): password from `SIEM_DEMO_PASSWORD` in `.env` (no default; Compose refuses to start without it)
 
 ## Authorization
 
@@ -29,7 +29,7 @@ Realm roles are mapped from `realm_access.roles` to Spring authorities:
 
 The API Gateway enforces route-level policy and each downstream service also validates JWTs and applies domain-specific role checks.
 
-## Phase 3 Notes
+## Notes
 
 - The `siem-demo` client enables only the password (direct access) grant and is intended exclusively for local development and test automation; it has no service account and cannot mint app tokens by itself.
 - Event payloads are validated with Bean Validation (`@Valid`) at the ingestion boundary before they are published to Kafka.

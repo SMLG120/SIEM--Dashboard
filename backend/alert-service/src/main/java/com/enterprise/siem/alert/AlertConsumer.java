@@ -20,8 +20,8 @@ public class AlertConsumer {
 
     @KafkaListener(topics = "siem.alerts", groupId = "alert-service")
     public void onAlert(SiemAlert alert) {
-        alertStore.add(alert);
         alertRepository.insert(alert);
+        alertStore.add(alert);
         log.info("Stored alert {} from rule {}", alert.id(), alert.ruleId());
     }
 }

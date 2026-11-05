@@ -164,7 +164,7 @@ export type LinkAlertInput = {
   description?: string;
 };
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:18080";
 
 async function authenticatedHeaders(): Promise<Record<string, string>> {
   const token = await getAccessToken();

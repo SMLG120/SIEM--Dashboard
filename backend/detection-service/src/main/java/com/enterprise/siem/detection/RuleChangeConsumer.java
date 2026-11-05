@@ -17,11 +17,15 @@ public class RuleChangeConsumer {
         this.ruleChangeService = ruleChangeService;
     }
 
-    @KafkaListener(topics = RULES_TOPIC, groupId = "detection-rules")
+    // A unique group per instance makes every replica receive every change, and replaying the
+    // topic from the earliest offset on startup restores rule state that lives only in memory.
+    @KafkaListener(topics = RULES_TOPIC,
+            groupId = "detection-rules-#{T(java.util.UUID).randomUUID()}",
+            properties = "auto.offset.reset=earliest")
     public void onRuleChange(RuleChange change) {
         ruleChangeService.apply(change).ifPresentOrElse(
-                updated -> log.info("Applied rule change {} -> rule {} is now enabled={}",
-                        change.action(), updated.id(), updated.enabled()),
+                updated -> log.info("Applied rule change {} -> rule {} is now enabled={} (by {})",
+                        change.action(), updated.id(), updated.enabled(), change.actor()),
                 () -> log.warn("Ignored rule change for unknown rule {}", change.ruleId())
         );
     }

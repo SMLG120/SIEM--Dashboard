@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+.git
+.github
+.vscode
+.idea
+**/node_modules
+**/dist
+**/target
+**/.DS_Store
