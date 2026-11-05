@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Activity, AlertTriangle, Bell, Siren } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { fetchServiceStatus, serviceEndpoints, type SecurityEvent, type SiemAlert } from "../api";
+import { fetchServiceHealth, serviceEndpoints, type SecurityEvent, type SiemAlert } from "../api";
 import { useAlerts, useDetectionSummary, useEvents } from "../hooks";
 
 function formatTime(iso: string) {
@@ -45,14 +45,15 @@ export function DashboardPage() {
     queryFn: () =>
       Promise.all(
         serviceEndpoints.map(async (endpoint) => {
-          const status = await fetchServiceStatus(endpoint.path);
-          return { label: endpoint.label, ready: status?.status === "READY" };
+          return { label: endpoint.label, health: await fetchServiceHealth(endpoint.path) };
         })
       ),
     refetchInterval: 30_000
   });
   const statuses = statusesQuery.data ?? [];
-  const readyCount = statuses.filter((item) => item.ready).length;
+  const readyCount = statuses.filter((item) => item.health === "ready").length;
+  const restrictedCount = statuses.filter((item) => item.health === "restricted").length;
+  const visibleCount = serviceEndpoints.length - restrictedCount;
 
   const countBySeverity = (severity: string) => alerts.filter((a) => a.severity === severity).length;
   const metrics = [
@@ -125,15 +126,20 @@ export function DashboardPage() {
           <div className="panel-heading">
             <h2>Service Mesh</h2>
             <span>
-              {statuses.length ? `${readyCount}/${serviceEndpoints.length}` : "loading"}
+              {statuses.length
+                ? `${readyCount}/${visibleCount}${restrictedCount ? ` · ${restrictedCount} restricted` : ""}`
+                : "loading"}
             </span>
           </div>
           <div className="service-list">
             {statuses.map((item) => (
               <div className="service-row" key={item.label}>
                 <span>{item.label}</span>
-                <strong className={`status-pill ${item.ready ? "ready" : "offline"}`}>
-                  {item.ready ? "READY" : "OFFLINE"}
+                <strong
+                  className={`status-pill ${item.health}`}
+                  title={item.health === "restricted" ? "Running, but your role cannot view this service" : undefined}
+                >
+                  {item.health.toUpperCase()}
                 </strong>
               </div>
             ))}

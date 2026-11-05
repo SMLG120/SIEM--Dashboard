@@ -171,7 +171,13 @@ async function authenticatedHeaders(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function sendJson<T>(method: string, path: string, body?: unknown): Promise<T> {
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+async function sendJson<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const headers = {
     "Content-Type": "application/json",
     ...(await authenticatedHeaders())
@@ -179,10 +185,11 @@ async function sendJson<T>(method: string, path: string, body?: unknown): Promis
   const response = await fetch(`${apiBaseUrl}${path}`, {
     method,
     headers,
-    body: body === undefined ? undefined : JSON.stringify(body)
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal
   });
   if (!response.ok) {
-    throw new Error(`${method} ${path} failed: HTTP ${response.status}`);
+    throw new ApiError(`${method} ${path} failed: HTTP ${response.status}`, response.status);
   }
   return (await response.json()) as T;
 }
@@ -199,11 +206,24 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return sendJson<T>("PATCH", path, body);
 }
 
-export async function fetchServiceStatus(path: string): Promise<ServiceStatus | null> {
+export type ServiceHealth = "ready" | "restricted" | "offline";
+
+const HEALTH_TIMEOUT_MS = 4_000;
+
+/**
+ * 401/403 means the service answered but the signed-in role may not see it; anything else is treated
+ * as down. A timeout keeps one unreachable service (the gateway can take ~15s to give up) from
+ * stalling the whole panel.
+ */
+export async function fetchServiceHealth(path: string): Promise<ServiceHealth> {
   try {
-    return await apiGet<ServiceStatus>(path);
-  } catch {
-    return null;
+    const status = await sendJson<ServiceStatus>("GET", path, undefined, AbortSignal.timeout(HEALTH_TIMEOUT_MS));
+    return status.status === "READY" ? "ready" : "offline";
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      return "restricted";
+    }
+    return "offline";
   }
 }
 

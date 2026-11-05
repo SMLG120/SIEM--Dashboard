@@ -493,6 +493,12 @@ code {
   background: rgba(77, 212, 172, 0.08);
 }
 
+.status-pill.restricted {
+  border-color: #34445e;
+  color: #9fb0c8;
+  background: rgba(143, 162, 189, 0.08);
+}
+
 .status-pill.offline,
 .status-pill.open {
   border-color: #7a3440;
