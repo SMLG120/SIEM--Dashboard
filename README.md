@@ -91,9 +91,9 @@ All ports bind to `127.0.0.1` in a dedicated range, so the stack doesn't clash w
 | `admin`, `sam.admin` | `ADMIN` | Everything |
 | `sam.manager` | `SOC_MANAGER` | Events, alerts, incidents, rule changes |
 | `sam.analyst` | `SECURITY_ANALYST` | Events, alert and incident investigation |
-| `sam.viewer` | `VIEWER` | Read-only alert visibility |
+| `sam.viewer`, `demo` | `VIEWER` | Read-only view of every page; all writes refused |
 
-All demo users share `SIEM_DEMO_PASSWORD`. Accounts lock temporarily after 5 failed sign-ins.
+`demo` uses `SIEM_PUBLIC_DEMO_PASSWORD`, intended to be shared publicly; every other account uses the private `SIEM_DEMO_PASSWORD`. Accounts lock temporarily after 5 failed sign-ins.
 
 **Forgot password:** use the link on the sign-in page. Keycloak sends the reset email to a local [Mailpit](https://mailpit.axllent.org/) inbox at http://localhost:18025, so no real mail is sent.
 
@@ -165,6 +165,7 @@ cd frontend/siem-dashboard && npm ci && npm run dev  # console on http://localho
 - [Architecture](docs/architecture.md): services, event flow and data ownership
 - [API reference](docs/api.md): every endpoint and the roles it needs
 - [Deployment](docs/deployment.md): ports, configuration and Helm
+- [Production](docs/production.md): HTTPS deployment to a single server with Caddy
 - [Operations](docs/operations.md): verification checklist and troubleshooting
 - [Security](docs/security.md) and [threat model](docs/threat-model.md)
 

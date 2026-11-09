@@ -36,7 +36,8 @@ class GatewaySecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/events/**").hasAnyRole(
                                 SiemRoles.ADMIN,
                                 SiemRoles.SOC_MANAGER,
-                                SiemRoles.SECURITY_ANALYST
+                                SiemRoles.SECURITY_ANALYST,
+                                SiemRoles.VIEWER
                         )
                         .pathMatchers("/api/events/**").hasAnyRole(
                                 SiemRoles.ADMIN,
@@ -57,20 +58,28 @@ class GatewaySecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/incidents/**").hasAnyRole(
                                 SiemRoles.ADMIN,
                                 SiemRoles.SOC_MANAGER,
-                                SiemRoles.SECURITY_ANALYST
+                                SiemRoles.SECURITY_ANALYST,
+                                SiemRoles.VIEWER
                         )
                         .pathMatchers("/api/incidents/**").hasAnyRole(
                                 SiemRoles.ADMIN,
                                 SiemRoles.SOC_MANAGER,
                                 SiemRoles.SECURITY_ANALYST
                         )
-                        .pathMatchers(HttpMethod.GET, "/api/rules/**").hasAnyRole(
+                        .pathMatchers(HttpMethod.GET, "/api/rules/**", "/api/detection/**").hasAnyRole(
                                 SiemRoles.ADMIN,
                                 SiemRoles.SOC_MANAGER,
-                                SiemRoles.SECURITY_ANALYST
+                                SiemRoles.SECURITY_ANALYST,
+                                SiemRoles.VIEWER
                         )
-                        .pathMatchers("/api/rules/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
+                        .pathMatchers("/api/rules/**", "/api/detection/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
                         .pathMatchers("/api/threat-intel/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
+                        .pathMatchers(HttpMethod.GET, "/api/search/**").hasAnyRole(
+                                SiemRoles.ADMIN,
+                                SiemRoles.SOC_MANAGER,
+                                SiemRoles.SECURITY_ANALYST,
+                                SiemRoles.VIEWER
+                        )
                         .pathMatchers("/api/search/**").hasAnyRole(
                                 SiemRoles.ADMIN,
                                 SiemRoles.SOC_MANAGER,

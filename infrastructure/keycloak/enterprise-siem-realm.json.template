@@ -206,6 +206,24 @@
           "temporary": false
         }
       ]
+    },
+    {
+      "username": "demo",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Visitor",
+      "email": "demo@example.test",
+      "realmRoles": [
+        "VIEWER"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "__SIEM_PUBLIC_DEMO_PASSWORD__",
+          "temporary": false
+        }
+      ]
     }
   ]
 }

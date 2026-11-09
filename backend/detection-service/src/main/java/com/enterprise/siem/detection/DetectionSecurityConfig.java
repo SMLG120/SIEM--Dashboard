@@ -24,7 +24,8 @@ class DetectionSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/detection/**", "/api/rules/**").hasAnyRole(
                                 SiemRoles.ADMIN,
                                 SiemRoles.SOC_MANAGER,
-                                SiemRoles.SECURITY_ANALYST
+                                SiemRoles.SECURITY_ANALYST,
+                                SiemRoles.VIEWER
                         )
                         .requestMatchers("/api/rules/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
                         .requestMatchers("/api/detection/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)

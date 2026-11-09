@@ -83,7 +83,7 @@ export function AlertsPage({ auth }: { auth: AuthState }) {
               <span>Event</span>
               <span>Source</span>
               <span>Status</span>
-              <span>Actions</span>
+              <span>{write ? "Actions" : ""}</span>
             </div>
             {alerts.map((alert: SiemAlert) => (
               <div className="data-row alert-grid" key={alert.id}>

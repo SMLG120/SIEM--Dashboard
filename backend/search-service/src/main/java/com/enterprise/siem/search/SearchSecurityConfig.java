@@ -4,6 +4,7 @@ import com.enterprise.siem.common.security.KeycloakRealmRoleConverter;
 import com.enterprise.siem.common.security.SiemRoles;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -20,6 +21,12 @@ class SearchSecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/search/**").hasAnyRole(
+                                SiemRoles.ADMIN,
+                                SiemRoles.SOC_MANAGER,
+                                SiemRoles.SECURITY_ANALYST,
+                                SiemRoles.VIEWER
+                        )
                         .requestMatchers("/api/search/**").hasAnyRole(
                                 SiemRoles.ADMIN,
                                 SiemRoles.SOC_MANAGER,
