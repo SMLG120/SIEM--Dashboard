@@ -17,6 +17,7 @@ Secrets are not committed. Local development uses `.env`, which is ignored by Gi
 
 - Keycloak admin console: `KEYCLOAK_ADMIN_USERNAME` / `KEYCLOAK_ADMIN_PASSWORD` from `.env`
 - Realm users (`admin`, `sam.admin`, `sam.manager`, `sam.analyst`, `sam.viewer`): password from `SIEM_DEMO_PASSWORD` in `.env` (no default; Compose refuses to start without it)
+- Public read-only `demo` user (`VIEWER`): password from `SIEM_PUBLIC_DEMO_PASSWORD`, meant to be shared. `VIEWER` may read every SIEM page (GET only) but not the audit or threat-intel services, and every write is refused by both the gateway and the owning service.
 
 ## Authorization
 

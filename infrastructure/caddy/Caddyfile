@@ -1,0 +1,40 @@
+# One public origin for the SIEM. SIEM_TLS_MODE=auto gets a Let's Encrypt certificate;
+# SIEM_TLS_MODE=internal uses Caddy's local CA (for rehearsing on a laptop).
+(tls_auto) {
+}
+
+(tls_internal) {
+	tls internal
+}
+
+{$SIEM_SITE_ADDRESS} {
+	import tls_{$SIEM_TLS_MODE}
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Keycloak's admin console and master realm stay private; administer through an SSH tunnel.
+	# `route` keeps this order: Caddy otherwise runs `handle` before `respond`, bypassing the block.
+	@keycloakAdmin path /auth/admin /auth/admin/* /auth/realms/master /auth/realms/master/*
+
+	route {
+		respond @keycloakAdmin 404
+
+		handle /api/* {
+			reverse_proxy api-gateway:8080
+		}
+
+		handle /auth/* {
+			reverse_proxy keycloak:8080
+		}
+
+		handle {
+			reverse_proxy frontend:8080
+		}
+	}
+}

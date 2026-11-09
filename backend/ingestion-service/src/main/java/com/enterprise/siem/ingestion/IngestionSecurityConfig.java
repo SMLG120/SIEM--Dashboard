@@ -24,7 +24,8 @@ class IngestionSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/events/**").hasAnyRole(
                                 SiemRoles.ADMIN,
                                 SiemRoles.SOC_MANAGER,
-                                SiemRoles.SECURITY_ANALYST
+                                SiemRoles.SECURITY_ANALYST,
+                                SiemRoles.VIEWER
                         )
                         .requestMatchers("/api/events/**").hasAnyRole(
                                 SiemRoles.ADMIN,

@@ -41,10 +41,11 @@ services:
       KC_HOSTNAME: http://localhost:${SIEM_KEYCLOAK_PORT:-18088}
       KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
       SIEM_DEMO_PASSWORD: ${SIEM_DEMO_PASSWORD:?SIEM_DEMO_PASSWORD is required}
+      SIEM_PUBLIC_DEMO_PASSWORD: ${SIEM_PUBLIC_DEMO_PASSWORD:?SIEM_PUBLIC_DEMO_PASSWORD is required}
       SIEM_FRONTEND_ORIGIN: http://localhost:${SIEM_FRONTEND_PORT:-15173}
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - mkdir -p /opt/keycloak/data/import && sed -e "s|__SIEM_DEMO_PASSWORD__|$$SIEM_DEMO_PASSWORD|g" -e "s|__SIEM_FRONTEND_ORIGIN__|$$SIEM_FRONTEND_ORIGIN|g" /opt/keycloak/data/import-template/enterprise-siem-realm.json.template > /opt/keycloak/data/import/enterprise-siem-realm.json && exec /opt/keycloak/bin/kc.sh start-dev --import-realm
+      - mkdir -p /opt/keycloak/data/import && sed -e "s|__SIEM_DEMO_PASSWORD__|$$SIEM_DEMO_PASSWORD|g" -e "s|__SIEM_PUBLIC_DEMO_PASSWORD__|$$SIEM_PUBLIC_DEMO_PASSWORD|g" -e "s|__SIEM_FRONTEND_ORIGIN__|$$SIEM_FRONTEND_ORIGIN|g" /opt/keycloak/data/import-template/enterprise-siem-realm.json.template > /opt/keycloak/data/import/enterprise-siem-realm.json && exec /opt/keycloak/bin/kc.sh start-dev --import-realm
     ports:
       - "127.0.0.1:${SIEM_KEYCLOAK_PORT:-18088}:8080"
     depends_on:

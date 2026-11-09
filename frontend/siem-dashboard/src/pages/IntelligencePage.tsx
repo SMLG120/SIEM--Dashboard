@@ -5,7 +5,6 @@ import { useRuleUpdate, useRules } from "../hooks";
 export function IntelligencePage({ auth }: { auth: AuthState }) {
   const rulesQuery = useRules();
   const ruleUpdate = useRuleUpdate();
-  const read = auth.roles.includes("ADMIN") || auth.roles.includes("SOC_MANAGER") || auth.roles.includes("SECURITY_ANALYST");
   const manage = auth.roles.includes("ADMIN") || auth.roles.includes("SOC_MANAGER");
 
   return (
@@ -15,9 +14,7 @@ export function IntelligencePage({ auth }: { auth: AuthState }) {
           <h2>Detection Rules</h2>
           <span>{rulesQuery.data?.length ?? 0} loaded</span>
         </div>
-        {!read ? (
-          <div className="empty-state">VIEWER role cannot view detection rules.</div>
-        ) : rulesQuery.isLoading ? (
+        {rulesQuery.isLoading ? (
           <div className="empty-state">Loading rules...</div>
         ) : (
           <div className="data-table">
