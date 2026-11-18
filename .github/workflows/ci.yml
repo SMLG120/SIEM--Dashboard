@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Least privilege: jobs only read the repository unless they say otherwise.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (unit + Testcontainers integration)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      # Testcontainers uses the runner's Docker daemon (PostgreSQL 16 and Kafka).
+      - name: Build and test
+        run: mvn -B -ntp clean verify
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: surefire-reports
+          path: backend/**/target/surefire-reports/
+          retention-days: 7
+
+  frontend:
+    name: Frontend (typecheck, build, audit)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend/siem-dashboard
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/siem-dashboard/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run build
+      - name: Dependency audit (fail on high or critical)
+        run: npm audit --audit-level=high --omit=dev
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  compose:
+    name: Compose and deploy scripts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate production compose with a throwaway env
+        run: |
+          cat > ci.env <<'ENV'
+          POSTGRES_DB=siem
+          POSTGRES_USER=siem_app
+          POSTGRES_PASSWORD=ci-only
+          SIEM_DB_USER=siem_service
+          SIEM_DB_PASSWORD=ci-only
+          KEYCLOAK_DB_PASSWORD=ci-only
+          REDIS_PASSWORD=ci-only
+          KEYCLOAK_ADMIN_USERNAME=admin
+          KEYCLOAK_ADMIN_PASSWORD=ci-only
+          SIEM_DEMO_PASSWORD=ci-only
+          SIEM_PUBLIC_DEMO_PASSWORD=ci-only
+          GF_SECURITY_ADMIN_USER=admin
+          GF_SECURITY_ADMIN_PASSWORD=ci-only
+          KAFKA_UI_USERNAME=admin
+          KAFKA_UI_PASSWORD=ci-only
+          SIEM_PUBLIC_URL=https://siem.example.test
+          SIEM_SITE_ADDRESS=siem.example.test
+          SIEM_TLS_MODE=auto
+          ENV
+          docker compose --env-file ci.env -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+      - name: Shell syntax
+        run: for f in infrastructure/deploy/*.sh infrastructure/postgres/*.sh scripts/*.sh; do bash -n "$f"; done
+      - name: Realm template renders to valid JSON with the script client disabled
+        run: |
+          sed -e 's|__SIEM_DEMO_PASSWORD__|x|g' -e 's|__SIEM_PUBLIC_DEMO_PASSWORD__|x|g' \
+              -e 's|__SIEM_FRONTEND_ORIGIN__|https://siem.example.test|g' -e 's|__SIEM_SCRIPT_CLIENT_ENABLED__|false|g' \
+              infrastructure/keycloak/enterprise-siem-realm.json.template \
+            | jq -e '.clients[] | select(.clientId == "siem-demo") | .enabled == false'
+
+  vulnerability-scan:
+    name: Dependency and IaC scan (Trivy)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
