@@ -11,6 +11,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/search")
 public class SearchController {
+    static final int MAX_QUERY_LENGTH = 256;
+
     private final SearchIndex index;
 
     public SearchController(SearchIndex index) {
@@ -47,6 +49,10 @@ public class SearchController {
         int clamped = Math.min(Math.max(limit, 1), 100);
         if (q == null || q.isBlank()) {
             return index.recent(indexName, clamped);
+        }
+        if (q.length() > MAX_QUERY_LENGTH) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "q must be at most " + MAX_QUERY_LENGTH + " characters");
         }
         return index.search(indexName, q.trim(), clamped);
     }
