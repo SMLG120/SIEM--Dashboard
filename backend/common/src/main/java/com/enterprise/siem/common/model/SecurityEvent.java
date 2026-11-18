@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.Instant;
+import java.util.Map;
 
 /**
  * The {@code siem.events} contract.
@@ -27,13 +28,30 @@ public record SecurityEvent(
         @JsonProperty("destinationPort") Integer destinationPort,
         @JsonProperty("userName") String userName,
         @JsonProperty("message") String message,
-        @JsonProperty("schemaVersion") Integer schemaVersion
+        @JsonProperty("schemaVersion") Integer schemaVersion,
+        @JsonProperty("attributes") Map<String, String> attributes
 ) {
-    public static final int CURRENT_SCHEMA_VERSION = 1;
+    /**
+     * v1: the original fields. v2: adds {@code attributes}, a bounded map of source-specific
+     * observables (for example {@code bytesOut}, {@code commandLine}, {@code fileHash}, {@code group}).
+     */
+    public static final int CURRENT_SCHEMA_VERSION = 2;
 
     @JsonCreator
     public SecurityEvent {
         schemaVersion = schemaVersion == null ? 1 : schemaVersion;
+        attributes = attributes == null ? Map.of() : Map.copyOf(attributes);
+    }
+
+    public SecurityEvent(String id, Instant timestamp, String eventType, EventSeverity severity, String category,
+                         String sourceIp, String sourceHost, String destinationIp, Integer destinationPort,
+                         String userName, String message, Integer schemaVersion) {
+        this(id, timestamp, eventType, severity, category, sourceIp, sourceHost, destinationIp, destinationPort,
+                userName, message, schemaVersion, Map.of());
+    }
+
+    public String attribute(String name) {
+        return attributes.get(name);
     }
 
     /** Pre-versioning constructor, kept so existing callers compile unchanged. */
@@ -41,6 +59,6 @@ public record SecurityEvent(
                          String sourceIp, String sourceHost, String destinationIp, Integer destinationPort,
                          String userName, String message) {
         this(id, timestamp, eventType, severity, category, sourceIp, sourceHost, destinationIp, destinationPort,
-                userName, message, CURRENT_SCHEMA_VERSION);
+                userName, message, 1, Map.of());
     }
 }

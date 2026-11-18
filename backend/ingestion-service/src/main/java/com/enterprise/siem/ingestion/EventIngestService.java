@@ -86,7 +86,8 @@ public class EventIngestService {
                 request.destinationPort(),
                 request.userName(),
                 request.message(),
-                SecurityEvent.CURRENT_SCHEMA_VERSION
+                SecurityEvent.CURRENT_SCHEMA_VERSION,
+                request.attributes()
         );
 
         if (!eventRepository.insert(event, receivedAt, request.sourceEventId())) {

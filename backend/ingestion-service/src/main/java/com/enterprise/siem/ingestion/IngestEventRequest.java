@@ -10,14 +10,17 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.Instant;
+import java.util.Map;
 
 /**
- * Inbound event schema (v1). Unknown JSON properties are rejected by the controller's message
+ * Inbound event schema (v2: adds attributes). Unknown JSON properties are rejected by the controller's message
  * converter configuration, so typos in field names fail loudly instead of being dropped.
  *
  * @param sourceEventId optional client-side identifier. When present, retries with the same value
  *                      from the same client produce the same event ID and are stored once.
  * @param occurredAt    optional event time; defaults to the time the platform received the event.
+ * @param attributes    optional source-specific fields used by detection rules (e.g. bytesOut, fileHash).
+ *                      At most 32 entries; keys are identifiers of up to 64 chars, values up to 512 chars.
  */
 public record IngestEventRequest(
         @NotBlank(message = "eventType is required")
@@ -47,8 +50,18 @@ public record IngestEventRequest(
         @Size(max = 128)
         @Pattern(regexp = "^[A-Za-z0-9_.:-]*$", message = "sourceEventId may contain only letters, digits and _ . : -")
         String sourceEventId,
-        Instant occurredAt
+        Instant occurredAt,
+        @Size(max = 32, message = "at most 32 attributes")
+        Map<@Pattern(regexp = "^[A-Za-z][A-Za-z0-9_.]{0,63}$", message = "attribute keys must be identifiers") String,
+                @NotNull @Size(max = 512) String> attributes
 ) {
+    public IngestEventRequest(String eventType, EventSeverity severity, String category, String sourceIp,
+                              String sourceHost, String destinationIp, Integer destinationPort, String userName,
+                              String message, String sourceEventId, Instant occurredAt) {
+        this(eventType, severity, category, sourceIp, sourceHost, destinationIp, destinationPort, userName, message,
+                sourceEventId, occurredAt, null);
+    }
+
     /** Pre-v2 shape, kept for existing callers and tests. */
     public IngestEventRequest(String eventType, EventSeverity severity, String category, String sourceIp,
                               String sourceHost, String destinationIp, Integer destinationPort, String userName,

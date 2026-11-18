@@ -5,6 +5,8 @@ import com.enterprise.siem.common.model.SecurityEvent;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -18,9 +20,12 @@ import java.util.Optional;
 public class EventRepository {
     private static final String COLUMNS = """
             id, timestamp, event_type, severity, category, source_ip, source_host,
-            destination_ip, destination_port, user_name, message, schema_version
+            destination_ip, destination_port, user_name, message, schema_version, attributes
             """;
-    private static final RowMapper<SecurityEvent> MAPPER = (rs, rowNum) -> new SecurityEvent(
+    private static final TypeReference<Map<String, String>> ATTRIBUTES = new TypeReference<>() {
+    };
+
+    private final RowMapper<SecurityEvent> MAPPER = (rs, rowNum) -> new SecurityEvent(
             rs.getString("id"),
             rs.getTimestamp("timestamp").toInstant(),
             rs.getString("event_type"),
@@ -32,13 +37,20 @@ public class EventRepository {
             rs.getObject("destination_port", Integer.class),
             rs.getString("user_name"),
             rs.getString("message"),
-            rs.getInt("schema_version")
+            rs.getInt("schema_version"),
+            readAttributes(rs.getString("attributes"))
     );
 
     private final JdbcClient jdbc;
+    private final ObjectMapper json;
 
-    public EventRepository(JdbcClient jdbc) {
+    public EventRepository(JdbcClient jdbc, ObjectMapper json) {
         this.jdbc = jdbc;
+        this.json = json;
+    }
+
+    private Map<String, String> readAttributes(String value) {
+        return value == null || value.isBlank() ? Map.of() : json.readValue(value, ATTRIBUTES);
     }
 
     public void insert(SecurityEvent event) {
@@ -50,10 +62,10 @@ public class EventRepository {
         return jdbc.sql("""
                         INSERT INTO siem_event (id, timestamp, event_type, severity, category, source_ip, source_host,
                                                 destination_ip, destination_port, user_name, message,
-                                                received_at, source_event_id, schema_version)
+                                                received_at, source_event_id, schema_version, attributes)
                         VALUES (:id, :timestamp, :eventType, :severity, :category, :sourceIp, :sourceHost,
                                 :destinationIp, :destinationPort, :userName, :message,
-                                :receivedAt, :sourceEventId, :schemaVersion)
+                                :receivedAt, :sourceEventId, :schemaVersion, :attributes)
                         ON CONFLICT (id) DO NOTHING
                         """)
                 .param("id", event.id())
@@ -70,6 +82,7 @@ public class EventRepository {
                 .param("receivedAt", Timestamp.from(receivedAt))
                 .param("sourceEventId", sourceEventId)
                 .param("schemaVersion", event.schemaVersion())
+                .param("attributes", event.attributes().isEmpty() ? null : json.writeValueAsString(event.attributes()))
                 .update() == 1;
     }
 

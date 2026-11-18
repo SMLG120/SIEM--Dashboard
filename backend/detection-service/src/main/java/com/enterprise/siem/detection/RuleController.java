@@ -26,6 +26,15 @@ public class RuleController {
     @GetMapping("/{id}")
     public DetectionRule ruleById(@PathVariable String id) {
         return ruleRepository.byId(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found"));
+    }
+
+    /** Runtime changes to the rule (enable/disable/severity) with actor, time and resulting version. */
+    @GetMapping("/{id}/history")
+    public List<RuleChange> history(@PathVariable String id) {
+        if (ruleRepository.byId(id).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found");
+        }
+        return ruleRepository.history(id).reversed();
     }
 }

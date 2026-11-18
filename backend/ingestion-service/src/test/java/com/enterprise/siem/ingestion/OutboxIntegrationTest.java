@@ -73,7 +73,7 @@ class OutboxIntegrationTest {
 
         List<ConsumerRecord<String, String>> records = pollFor(event.id(), Duration.ofSeconds(30));
         assertThat(records).extracting(ConsumerRecord::key).contains(event.id());
-        assertThat(records.getFirst().value()).contains("\"eventType\":\"LOGIN_FAILURE\"").contains("\"schemaVersion\":1");
+        assertThat(records.getFirst().value()).contains("\"eventType\":\"LOGIN_FAILURE\"").contains("\"schemaVersion\":2");
 
         awaitOutboxDrained(event.id());
     }

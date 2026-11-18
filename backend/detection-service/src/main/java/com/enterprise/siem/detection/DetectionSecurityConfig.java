@@ -27,6 +27,12 @@ class DetectionSecurityConfig {
                                 SiemRoles.SECURITY_ANALYST,
                                 SiemRoles.VIEWER
                         )
+                        // Dry-run testing has no side effects, so analysts may use it too.
+                        .requestMatchers(HttpMethod.POST, "/api/rules/test").hasAnyRole(
+                                SiemRoles.ADMIN,
+                                SiemRoles.SOC_MANAGER,
+                                SiemRoles.SECURITY_ANALYST
+                        )
                         .requestMatchers("/api/rules/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
                         .requestMatchers("/api/detection/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
                         .anyRequest().authenticated()
