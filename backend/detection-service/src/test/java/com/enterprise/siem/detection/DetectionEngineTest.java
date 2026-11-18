@@ -191,4 +191,52 @@ class DetectionEngineTest {
         engine.reset(rule.id());
         assertThat(engine.evaluate(login("b", 1, "1.2.3.4"), rule)).as("old event forgotten").isEmpty();
     }
+
+    private static DetectionRule failuresThenSuccess() {
+        return new DetectionRule("TEST-0007", 1, "Seq", "d", EventSeverity.CRITICAL, true, RuleType.SEQUENCE,
+                null, null,
+                new SequenceSpec(List.of("userName"), 600, List.of(
+                        new SequenceSpec.Step("fail", new RuleCondition(List.of("LOGIN_FAILURE"), null, null), 2),
+                        new SequenceSpec.Step("ok", new RuleCondition(List.of("LOGIN_SUCCESS"), null, null), 1))),
+                null, List.of(), List.of("fp"), null);
+    }
+
+    /** Events keyed by id land on different partitions, so the success can be consumed first. */
+    @Test
+    void sequenceUsesEventTimeWhenTheFinalStepArrivesFirst() {
+        DetectionRule rule = failuresThenSuccess();
+        SecurityEvent success = new SecurityEvent("s", T0.plusSeconds(30), "LOGIN_SUCCESS", EventSeverity.INFO, null,
+                null, null, null, null, "alice", null);
+
+        assertThat(engine.evaluate(success, rule)).as("success alone").isEmpty();
+        assertThat(engine.evaluate(login("f1", 0, "1.1.1.1"), rule)).isEmpty();
+        List<SiemAlert> alerts = engine.evaluate(login("f2", 10, "1.1.1.1"), rule);
+
+        assertThat(alerts).hasSize(1);
+        SiemAlert alert = alerts.getFirst();
+        assertThat(alert.eventId()).as("trigger is the success, not the late failure").isEqualTo("s");
+        assertThat(alert.evidence().eventIds()).containsExactly("f1", "f2", "s");
+        assertThat(alert.evidence().firstSeen()).isEqualTo(T0);
+        assertThat(engine.evaluate(login("f3", 20, "1.1.1.1"), rule)).as("same sequence not re-alerted").isEmpty();
+    }
+
+    @Test
+    void sequenceStillRequiresOrderInEventTime() {
+        DetectionRule rule = failuresThenSuccess();
+        // Success happened before the failures (in event time): not a brute-force-then-success.
+        engine.evaluate(new SecurityEvent("s", T0, "LOGIN_SUCCESS", EventSeverity.INFO, null, null, null, null, null,
+                "alice", null), rule);
+        engine.evaluate(login("f1", 10, "1.1.1.1"), rule);
+        assertThat(engine.evaluate(login("f2", 20, "1.1.1.1"), rule)).isEmpty();
+    }
+
+    @Test
+    void lateEventsCannotStretchAThresholdWindow() {
+        DetectionRule rule = threshold(3, 60, null);
+        engine.evaluate(login("a", 1000, "1.2.3.4"), rule);
+        engine.evaluate(login("b", 1010, "1.2.3.4"), rule);
+        // Arrives late with an event time far outside the window of the newest event.
+        assertThat(engine.evaluate(login("old", 0, "1.2.3.4"), rule)).isEmpty();
+        assertThat(engine.evaluate(login("c", 1020, "1.2.3.4"), rule)).hasSize(1);
+    }
 }

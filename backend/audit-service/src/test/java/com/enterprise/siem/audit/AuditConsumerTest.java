@@ -56,6 +56,14 @@ class AuditConsumerTest {
     }
 
     @Test
+    void actionsAreNotDoublePrefixed() {
+        consumer.onRecord(record("siem.incidents", 20,
+                "{\"incidentId\":\"INC-9\",\"action\":\"INCIDENT_CREATED\",\"at\":\"2026-11-18T11:00:00Z\"}"));
+        assertThat(repository.search(null, "INCIDENT", "INC-9", null, 10)).extracting(AuditEntry::action)
+                .containsExactly("INCIDENT_CREATED");
+    }
+
+    @Test
     void redeliveredRecordsAreStoredOnce() {
         String json = "{\"alertId\":\"A-2\",\"action\":\"ASSIGNED\",\"actor\":\"m\",\"occurredAt\":\"2026-11-18T10:00:00Z\"}";
         consumer.onRecord(record("siem.audit", 7, json));

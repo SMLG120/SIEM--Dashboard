@@ -12,9 +12,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -127,27 +127,55 @@ public class DetectionEngine {
         };
     }
 
+    /**
+     * @param event kept only for the final step of a sequence: that event becomes the alert's trigger
+     *              even if it was consumed before the earlier steps (events can arrive out of order
+     *              across partitions).
+     */
     private record Hit(Instant at, String eventId, int step, String distinctValue, long amount,
-                       List<String> matched) {
+                       List<String> matched, SecurityEvent event) {
+        Hit(Instant at, String eventId, int step, String distinctValue, long amount, List<String> matched) {
+            this(at, eventId, step, distinctValue, amount, matched, null);
+        }
     }
+
+    private static final Comparator<Hit> BY_EVENT_TIME = Comparator.comparing(Hit::at);
 
     private static final class Group {
         final Deque<Hit> hits = new ArrayDeque<>();
         final Set<String> eventIds = new HashSet<>();
         Instant suppressedUntil = Instant.MIN;
+        Instant newest = Instant.MIN;
+        String lastTriggerId;
 
         void add(Hit hit) {
             hits.addLast(hit);
             eventIds.add(hit.eventId());
+            if (hit.at().isAfter(newest)) {
+                newest = hit.at();
+            }
             while (hits.size() > MAX_EVENTS_PER_GROUP) {
                 eventIds.remove(hits.removeFirst().eventId());
             }
         }
 
-        void evictBefore(Instant cutoff) {
-            while (!hits.isEmpty() && hits.peekFirst().at().isBefore(cutoff)) {
-                eventIds.remove(hits.removeFirst().eventId());
-            }
+        /**
+         * Keeps only hits within {@code windowSeconds} of the newest event time seen. Measured from the
+         * newest (not the current) event so a late, old event can't stretch the window.
+         */
+        void evictOutsideWindow(int windowSeconds) {
+            Instant cutoff = newest.minusSeconds(windowSeconds);
+            hits.removeIf(hit -> {
+                boolean old = hit.at().isBefore(cutoff);
+                if (old) {
+                    eventIds.remove(hit.eventId());
+                }
+                return old;
+            });
+        }
+
+        Instant earliest() {
+            return hits.stream().map(Hit::at).min(Comparator.naturalOrder()).orElse(newest);
         }
     }
 
@@ -180,7 +208,10 @@ public class DetectionEngine {
             }
             String distinct = spec.distinctField() == null ? null : field(spec.distinctField(), event);
             group.add(new Hit(event.timestamp(), event.id(), 0, distinct, amount, matched.get()));
-            group.evictBefore(event.timestamp().minusSeconds(spec.windowSeconds()));
+            group.evictOutsideWindow(spec.windowSeconds());
+            if (!group.eventIds.contains(event.id())) {
+                return Optional.empty(); // arrived too late: older than the window
+            }
 
             if (event.timestamp().isBefore(group.suppressedUntil)) {
                 return Optional.empty();
@@ -248,22 +279,24 @@ public class DetectionEngine {
             if (group.eventIds.contains(event.id())) {
                 return Optional.empty();
             }
-            group.add(new Hit(event.timestamp(), event.id(), step, null, 1, stepMatched));
-            group.evictBefore(event.timestamp().minusSeconds(spec.windowSeconds()));
-
             int last = spec.steps().size() - 1;
-            if (step != last || event.timestamp().isBefore(group.suppressedUntil)) {
-                return Optional.empty();
-            }
+            group.add(new Hit(event.timestamp(), event.id(), step, null, 1, stepMatched, step == last ? event : null));
+            group.evictOutsideWindow(spec.windowSeconds());
 
-            // Walk hits in arrival order and require each step's count before advancing to the next.
+            // Walk hits in event-time order (arrival order can differ across partitions) and require
+            // each step's count before advancing. Re-checked on every step, so a final step consumed
+            // before the earlier ones still completes the sequence once they arrive.
+            List<Hit> ordered = new ArrayList<>(group.hits);
+            ordered.sort(BY_EVENT_TIME);
             int current = 0;
             int seen = 0;
-            for (Hit hit : group.hits) {
+            Hit trigger = null;
+            for (Hit hit : ordered) {
                 if (hit.step() == current) {
                     seen++;
                     if (seen >= spec.steps().get(current).requiredCount()) {
                         if (current == last) {
+                            trigger = hit;
                             break;
                         }
                         current++;
@@ -271,10 +304,14 @@ public class DetectionEngine {
                     }
                 }
             }
-            boolean complete = current == last && seen >= spec.steps().get(last).requiredCount();
-            if (!complete) {
+            if (trigger == null || trigger.event() == null
+                    || trigger.at().isBefore(group.suppressedUntil)
+                    || trigger.eventId().equals(group.lastTriggerId)) {
                 return Optional.empty();
             }
+            group.lastTriggerId = trigger.eventId();
+            stepMatched = trigger.matched();
+            event = trigger.event();
             List<String> conditions = new ArrayList<>();
             for (SequenceSpec.Step s : spec.steps()) {
                 conditions.add("step '" + s.name() + "' x" + s.requiredCount());
@@ -287,12 +324,10 @@ public class DetectionEngine {
         private SiemAlert fire(DetectionRule rule, String key, SecurityEvent trigger, Group group,
                                List<String> conditions, int window) {
             group.suppressedUntil = trigger.timestamp().plusSeconds(rule.effectiveSuppressionSeconds());
-            List<String> ids = new ArrayList<>();
-            for (Iterator<Hit> it = group.hits.iterator(); it.hasNext() && ids.size() < AlertEvidence.MAX_EVENT_IDS; ) {
-                ids.add(it.next().eventId());
-            }
+            List<String> ids = group.hits.stream().sorted(BY_EVENT_TIME).map(Hit::eventId)
+                    .limit(AlertEvidence.MAX_EVENT_IDS).toList();
             AlertEvidence evidence = new AlertEvidence(rule.type().name(), conditions, ids, group.hits.size(), key,
-                    window, group.hits.peekFirst().at(), trigger.timestamp());
+                    window, group.earliest(), trigger.timestamp());
             return alert(rule, DeterministicIds.of("siem-alert", rule.id(), key, trigger.id()), trigger, evidence);
         }
     }

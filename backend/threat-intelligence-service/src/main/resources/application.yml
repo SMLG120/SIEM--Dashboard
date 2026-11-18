@@ -1,4 +1,8 @@
 spring:
+  # RFC 9457 bodies: ResponseStatusException reasons (e.g. invalid transitions) reach the client.
+  mvc:
+    problemdetails:
+      enabled: true
   application:
     name: threat-intelligence-service
   datasource:

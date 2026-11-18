@@ -44,22 +44,27 @@ public class AuditConsumer {
         switch (record.topic()) {
             case "siem.rules" -> repository.append(
                     instant(node.get("changedAt")), text(node, "actor", "unknown"),
-                    "RULE_" + text(node, "action", "CHANGED"), "RULE", text(node, "ruleId", "?"),
+                    prefixed("RULE_", text(node, "action", "CHANGED")), "RULE", text(node, "ruleId", "?"),
                     node.hasNonNull("severity") ? "severity=" + node.get("severity").asString()
                             + (node.hasNonNull("resultingVersion") ? " version=" + node.get("resultingVersion").asString() : "")
                             : node.hasNonNull("resultingVersion") ? "version=" + node.get("resultingVersion").asString() : null,
                     record.topic(), record.partition(), record.offset());
             case "siem.audit" -> repository.append(
                     instant(node.get("occurredAt")), text(node, "actor", "unknown"),
-                    "ALERT_" + text(node, "action", "CHANGED"), "ALERT", text(node, "alertId", "?"),
+                    prefixed("ALERT_", text(node, "action", "CHANGED")), "ALERT", text(node, "alertId", "?"),
                     detail(node), record.topic(), record.partition(), record.offset());
             case "siem.incidents" -> repository.append(
                     instant(node.get("at")), text(node, "actor", "system"),
-                    "INCIDENT_" + text(node, "action", "CHANGED"), "INCIDENT", text(node, "incidentId", "?"),
+                    prefixed("INCIDENT_", text(node, "action", "CHANGED")), "INCIDENT", text(node, "incidentId", "?"),
                     node.hasNonNull("detail") ? node.get("detail").asString() : text(node, "title", null),
                     record.topic(), record.partition(), record.offset());
             default -> throw new NonRetryableRecordException("unexpected topic " + record.topic());
         }
+    }
+
+    /** Incident actions already read e.g. INCIDENT_CREATED; avoid INCIDENT_INCIDENT_CREATED. */
+    static String prefixed(String prefix, String action) {
+        return action.startsWith(prefix) ? action : prefix + action;
     }
 
     private static String detail(JsonNode node) {
