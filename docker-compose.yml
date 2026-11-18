@@ -1,3 +1,11 @@
+x-spring-healthcheck: &spring-healthcheck
+  # The JRE image has no curl; probe the actuator over bash's /dev/tcp instead.
+  test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/$$SERVER_PORT && printf \"GET /actuator/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3 && timeout 5 cat <&3 | grep -q UP'"]
+  interval: 15s
+  timeout: 10s
+  retries: 5
+  start_period: 90s
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -156,24 +164,25 @@ services:
       keycloak:
         condition: service_started
       auth-service:
-        condition: service_started
+        condition: service_healthy
       ingestion-service:
-        condition: service_started
+        condition: service_healthy
       detection-service:
-        condition: service_started
+        condition: service_healthy
       alert-service:
-        condition: service_started
+        condition: service_healthy
       incident-service:
-        condition: service_started
+        condition: service_healthy
       threat-intelligence-service:
-        condition: service_started
+        condition: service_healthy
       audit-service:
-        condition: service_started
+        condition: service_healthy
       search-service:
-        condition: service_started
+        condition: service_healthy
 
   auth-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -188,6 +197,7 @@ services:
 
   ingestion-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -214,6 +224,7 @@ services:
 
   detection-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -234,6 +245,7 @@ services:
 
   alert-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -260,6 +272,7 @@ services:
 
   incident-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -284,6 +297,7 @@ services:
 
   threat-intelligence-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -300,6 +314,7 @@ services:
 
   audit-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -316,6 +331,7 @@ services:
 
   search-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
