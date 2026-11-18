@@ -15,46 +15,48 @@ spring:
       password: ${REDIS_PASSWORD:}
   cloud:
     gateway:
-      default-filters:
-        - SecureHeaders
-        - name: RequestRateLimiter
-          args:
-            redis-rate-limiter.replenishRate: ${SIEM_RATE_LIMIT_REPLENISH:20}
-            redis-rate-limiter.burstCapacity: ${SIEM_RATE_LIMIT_BURST:40}
-            key-resolver: "#{@userKeyResolver}"
-      routes:
-            - id: auth-service
-              uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
-              predicates:
-                - Path=/api/auth/**,/api/users/**
-            - id: ingestion-service
-              uri: ${INGESTION_SERVICE_URL:http://ingestion-service:8082}
-              predicates:
-                - Path=/api/events/**
-            - id: detection-service
-              uri: ${DETECTION_SERVICE_URL:http://detection-service:8083}
-              predicates:
-                - Path=/api/detection/**,/api/rules/**
-            - id: alert-service
-              uri: ${ALERT_SERVICE_URL:http://alert-service:8084}
-              predicates:
-                - Path=/api/alerts/**
-            - id: incident-service
-              uri: ${INCIDENT_SERVICE_URL:http://incident-service:8085}
-              predicates:
-                - Path=/api/incidents/**
-            - id: threat-intelligence-service
-              uri: ${THREAT_INTEL_SERVICE_URL:http://threat-intelligence-service:8086}
-              predicates:
-                - Path=/api/threat-intel/**
-            - id: audit-service
-              uri: ${AUDIT_SERVICE_URL:http://audit-service:8087}
-              predicates:
-                - Path=/api/audit/**
-            - id: search-service
-              uri: ${SEARCH_SERVICE_URL:http://search-service:8088}
-              predicates:
-                - Path=/api/search/**
+      server:
+        webflux:
+          default-filters:
+            - SecureHeaders
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: ${SIEM_RATE_LIMIT_REPLENISH:20}
+                redis-rate-limiter.burstCapacity: ${SIEM_RATE_LIMIT_BURST:40}
+                key-resolver: "#{@userKeyResolver}"
+          routes:
+                - id: auth-service
+                  uri: ${AUTH_SERVICE_URL:http://auth-service:8081}
+                  predicates:
+                    - Path=/api/auth/**,/api/users/**
+                - id: ingestion-service
+                  uri: ${INGESTION_SERVICE_URL:http://ingestion-service:8082}
+                  predicates:
+                    - Path=/api/events/**
+                - id: detection-service
+                  uri: ${DETECTION_SERVICE_URL:http://detection-service:8083}
+                  predicates:
+                    - Path=/api/detection/**,/api/rules/**
+                - id: alert-service
+                  uri: ${ALERT_SERVICE_URL:http://alert-service:8084}
+                  predicates:
+                    - Path=/api/alerts/**
+                - id: incident-service
+                  uri: ${INCIDENT_SERVICE_URL:http://incident-service:8085}
+                  predicates:
+                    - Path=/api/incidents/**
+                - id: threat-intelligence-service
+                  uri: ${THREAT_INTEL_SERVICE_URL:http://threat-intelligence-service:8086}
+                  predicates:
+                    - Path=/api/threat-intel/**
+                - id: audit-service
+                  uri: ${AUDIT_SERVICE_URL:http://audit-service:8087}
+                  predicates:
+                    - Path=/api/audit/**
+                - id: search-service
+                  uri: ${SEARCH_SERVICE_URL:http://search-service:8088}
+                  predicates:
+                    - Path=/api/search/**
 
 server:
   port: ${SERVER_PORT:8080}

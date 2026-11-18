@@ -1,7 +1,7 @@
 package com.enterprise.siem.detection;
 
 import com.enterprise.siem.common.model.EventSeverity;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

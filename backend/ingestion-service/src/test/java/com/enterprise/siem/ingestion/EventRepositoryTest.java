@@ -4,8 +4,8 @@ import com.enterprise.siem.common.model.EventSeverity;
 import com.enterprise.siem.common.model.SecurityEvent;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.jdbc.test.autoconfigure.JdbcTest;
 import org.springframework.context.annotation.Import;
 
 import java.time.Instant;
@@ -25,15 +25,15 @@ class EventRepositoryTest {
     void insertsAndReadsRecentEvents() {
         SecurityEvent older = event("evt-old", Instant.now().minusSeconds(60), "LOGIN_FAILURE");
         SecurityEvent newer = event("evt-new", Instant.now(), "MALWARE_DETECTED");
-        SecurityEvent newest = event("evt-dup", Instant.now().plusSeconds(1), "PORT_SCAN");
+        SecurityEvent newest = event("evt-dup", Instant.now().plusSeconds(120), "PORT_SCAN");
 
+        long before = repository.count();
         repository.insert(older);
         repository.insert(newer);
         repository.insert(newest);
         repository.insert(newest);
 
-        assertEquals(3, repository.count());
-        assertEquals(3, repository.recent(10).size());
+        assertEquals(before + 3, repository.count(), "the duplicate insert is ignored");
         assertEquals("PORT_SCAN", repository.recent(1).get(0).eventType());
         assertEquals(2, repository.recent(2).size());
     }

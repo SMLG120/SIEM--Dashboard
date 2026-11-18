@@ -23,9 +23,9 @@ public class AlertRepository {
         jdbc.sql("""
                 INSERT INTO siem_alert (id, created_at, rule_id, rule_name, description, severity, event_type,
                                         event_id, source_ip, user_name, status)
-                SELECT :id, :createdAt, :ruleId, :ruleName, :description, :severity, :eventType,
-                       :eventId, :sourceIp, :userName, :status
-                WHERE NOT EXISTS (SELECT 1 FROM siem_alert WHERE id = :id)
+                VALUES (:id, :createdAt, :ruleId, :ruleName, :description, :severity, :eventType,
+                       :eventId, :sourceIp, :userName, :status)
+                ON CONFLICT (id) DO NOTHING
                 """)
                 .param("id", alert.id())
                 .param("createdAt", Timestamp.from(alert.createdAt()))
@@ -58,8 +58,8 @@ public class AlertRepository {
     public void insertNote(String alertId, AlertNote note) {
         jdbc.sql("""
                 INSERT INTO siem_alert_note (id, alert_id, author, text, created_at)
-                SELECT :id, :alertId, :author, :text, :createdAt
-                WHERE NOT EXISTS (SELECT 1 FROM siem_alert_note WHERE id = :id)
+                VALUES (:id, :alertId, :author, :text, :createdAt)
+                ON CONFLICT (id) DO NOTHING
                 """)
                 .param("id", note.id())
                 .param("alertId", alertId)

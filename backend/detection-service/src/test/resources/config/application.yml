@@ -1,0 +1,7 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:1   # nothing listens here; context tests must not need a broker
+    admin:
+      auto-create: false
+    listener:
+      auto-startup: false

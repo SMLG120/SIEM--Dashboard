@@ -1,7 +1,7 @@
 package com.enterprise.siem.search;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import org.apache.http.HttpHost;
 import org.opensearch.client.Response;
 import org.opensearch.client.RestClient;

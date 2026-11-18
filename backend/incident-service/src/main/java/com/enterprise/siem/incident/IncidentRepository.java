@@ -6,8 +6,8 @@ import com.enterprise.siem.incident.model.IncidentNote;
 import com.enterprise.siem.incident.model.IncidentStatus;
 import com.enterprise.siem.incident.model.RelatedAlert;
 import com.enterprise.siem.incident.model.TimelineEntry;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
@@ -99,7 +99,7 @@ public class IncidentRepository {
                     incident.timeline(),
                     incident.notes()
             ));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to serialize incident payload for " + incident.id(), e);
         }
     }
@@ -128,7 +128,7 @@ public class IncidentRepository {
             return payload == null || payload.isBlank()
                     ? Payload.empty()
                     : mapper.readValue(payload, Payload.class);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new IllegalStateException("Failed to deserialize incident payload", e);
         }
     }

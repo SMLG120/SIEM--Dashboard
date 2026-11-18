@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
-import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
 
 import java.time.Instant;
 import java.util.List;
@@ -73,7 +73,7 @@ class IncidentServiceTest {
                 new DefaultKafkaProducerFactory<>(Map.of(
                         ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092",
                         ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName(),
-                        ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class.getName()
+                        ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class.getName()
                 ));
         return new KafkaTemplate<>(factory) {
             @Override
