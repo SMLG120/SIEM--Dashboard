@@ -30,6 +30,14 @@ spring:
       properties:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
         spring.json.trusted.packages: com.enterprise.siem.common.model
+    producer:
+      # Alert workflow history forwarded to siem.audit.
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      acks: all
+      properties:
+        spring.json.add.type.headers: false
+        max.block.ms: 5000
 
 server:
   port: ${SERVER_PORT:8084}

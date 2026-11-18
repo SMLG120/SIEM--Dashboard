@@ -27,17 +27,46 @@ public class AlertService {
             AlertStatus.OPEN, EnumSet.of(AlertStatus.RESOLVED) // reopen
     );
 
+    public static final String AUDIT_TOPIC = "siem.audit";
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AlertService.class);
+
     private final AlertRepository repository;
     private final Clock clock;
+    private final org.springframework.kafka.core.KafkaTemplate<String, Object> kafka;
 
     @org.springframework.beans.factory.annotation.Autowired
-    public AlertService(AlertRepository repository) {
-        this(repository, Clock.systemUTC());
+    public AlertService(AlertRepository repository,
+                        org.springframework.beans.factory.ObjectProvider<org.springframework.kafka.core.KafkaTemplate<String, Object>> kafka) {
+        this(repository, Clock.systemUTC(), kafka.getIfAvailable());
     }
 
-    AlertService(AlertRepository repository, Clock clock) {
+    AlertService(AlertRepository repository, Clock clock,
+                 org.springframework.kafka.core.KafkaTemplate<String, Object> kafka) {
         this.repository = repository;
         this.clock = clock;
+        this.kafka = kafka;
+    }
+
+    /**
+     * Writes the history row in the caller's transaction, then forwards it to the central audit log
+     * after commit. siem_alert_history is authoritative; the topic copy is best effort.
+     */
+    private void history(AlertHistoryEntry entry) {
+        repository.appendHistory(entry);
+        if (kafka == null || !org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        try {
+                            kafka.send(AUDIT_TOPIC, entry.alertId(), entry);
+                        } catch (RuntimeException e) {
+                            log.warn("Could not forward alert history to {}: {}", AUDIT_TOPIC, e.getMessage());
+                        }
+                    }
+                });
     }
 
     /** Stores an alert from the detection pipeline; redeliveries are no-ops. */
@@ -45,7 +74,7 @@ public class AlertService {
     public boolean record(SiemAlert alert) {
         boolean created = repository.insert(alert);
         if (created) {
-            repository.appendHistory(new AlertHistoryEntry(alert.id(), "CREATED", null, AlertStatus.OPEN,
+            history(new AlertHistoryEntry(alert.id(), "CREATED", null, AlertStatus.OPEN,
                     "detection-service", "Rule " + alert.ruleId() + " v" + alert.ruleVersion(), clock.instant()));
         }
         return created;
@@ -66,7 +95,7 @@ public class AlertService {
             repository.updateStatus(id, target, now);
         }
         String action = target == AlertStatus.OPEN ? "REOPENED" : target.name();
-        repository.appendHistory(new AlertHistoryEntry(id, action, from, target, actor, comment, now));
+        history(new AlertHistoryEntry(id, action, from, target, actor, comment, now));
         return repository.findById(id);
     }
 
@@ -76,7 +105,7 @@ public class AlertService {
             return Optional.empty();
         }
         repository.assign(id, assignee);
-        repository.appendHistory(new AlertHistoryEntry(id, "ASSIGNED", null, null, actor,
+        history(new AlertHistoryEntry(id, "ASSIGNED", null, null, actor,
                 "Assigned to " + assignee, clock.instant()));
         return repository.findDetail(id);
     }
@@ -89,7 +118,7 @@ public class AlertService {
         AlertNote note = new AlertNote("AN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
                 author, text, clock.instant());
         repository.insertNote(id, note);
-        repository.appendHistory(new AlertHistoryEntry(id, "NOTE_ADDED", null, null, author,
+        history(new AlertHistoryEntry(id, "NOTE_ADDED", null, null, author,
                 "Note " + note.id(), note.createdAt()));
         return Optional.of(note);
     }

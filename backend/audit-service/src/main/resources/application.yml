@@ -1,6 +1,15 @@
 spring:
   application:
     name: audit-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:15432/siem}
+    username: ${DB_USERNAME:siem_app}
+    password: ${DB_PASSWORD:}
+  flyway:
+    table: flyway_history_audit
+    locations: classpath:db/migration/audit
+    baseline-on-migrate: true
+    baseline-version: 0
   security:
     oauth2:
       resourceserver:
@@ -8,6 +17,14 @@ spring:
           issuer-uri: ${OIDC_ISSUER_URI:http://localhost:18088/realms/enterprise-siem}
           jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:18088/realms/enterprise-siem/protocol/openid-connect/certs}
           audiences: ${OIDC_AUDIENCE:api-gateway}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    consumer:
+      group-id: audit-service
+      auto-offset-reset: earliest
+      # Records from several producers and schemas: read raw JSON and map fields explicitly.
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
 server:
   port: ${SERVER_PORT:8087}

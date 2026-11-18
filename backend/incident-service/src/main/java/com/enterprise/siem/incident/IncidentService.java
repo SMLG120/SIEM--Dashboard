@@ -15,6 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
@@ -62,7 +63,7 @@ public class IncidentService {
                                 current.severity() + " -> " + alert.severity() + " (linked alert)"));
             }
             repository.save(updated);
-            notifyAfterCommit(updated, "ALERT_LINKED");
+            notifyAfterCommit(updated, current.timeline().size());
             return Optional.of(updated);
         }
 
@@ -75,7 +76,7 @@ public class IncidentService {
                                 : "Incident created from alert " + alert.id()));
         repository.save(created);
         log.info("Created incident {} for alert {}", created.id(), alert.id());
-        notifyAfterCommit(created, "INCIDENT_CREATED");
+        notifyAfterCommit(created, 0);
         return Optional.of(created);
     }
 
@@ -85,7 +86,7 @@ public class IncidentService {
                         severity == null ? EventSeverity.MEDIUM : severity)
                 .appendTimeline(new TimelineEntry(Instant.now(), actor, "INCIDENT_CREATED", "Manually created by " + actor));
         repository.save(incident);
-        notifyAfterCommit(incident, "INCIDENT_CREATED");
+        notifyAfterCommit(incident, 0);
         return incident;
     }
 
@@ -150,26 +151,31 @@ public class IncidentService {
         return repository.findById(id);
     }
 
-    private Incident change(String id, UnaryOperator<Incident> updater, String action) {
+    private Incident change(String id, UnaryOperator<Incident> updater, @SuppressWarnings("unused") String action) {
         Incident current = repository.lock(id).orElseThrow(() -> new NotFoundException("Incident not found"));
         Incident updated = updater.apply(current);
         if (updated != current) {
             repository.save(updated);
-            notifyAfterCommit(updated, action);
+            notifyAfterCommit(updated, current.timeline().size());
         }
         return updated;
     }
 
-    private void notifyAfterCommit(Incident incident, String action) {
+    /** Publishes one event per timeline entry added since {@code previousTimelineSize}, after commit. */
+    private void notifyAfterCommit(Incident incident, int previousTimelineSize) {
+        List<IncidentEvent> events = incident.timeline().stream().skip(previousTimelineSize)
+                .map(t -> new IncidentEvent(incident.id(), incident.title(), t.action(), t.occurredAt(), t.actor(), t.detail()))
+                .toList();
+        Runnable send = () -> events.forEach(kafka::publish);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    kafka.publish(incident.id(), incident.title(), action);
+                    send.run();
                 }
             });
         } else {
-            kafka.publish(incident.id(), incident.title(), action);
+            send.run();
         }
     }
 

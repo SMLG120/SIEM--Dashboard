@@ -1,6 +1,15 @@
 spring:
   application:
     name: threat-intelligence-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:15432/siem}
+    username: ${DB_USERNAME:siem_app}
+    password: ${DB_PASSWORD:}
+  flyway:
+    table: flyway_history_threatintel
+    locations: classpath:db/migration/threatintel
+    baseline-on-migrate: true
+    baseline-version: 0
   security:
     oauth2:
       resourceserver:
@@ -8,6 +17,24 @@ spring:
           issuer-uri: ${OIDC_ISSUER_URI:http://localhost:18088/realms/enterprise-siem}
           jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:18088/realms/enterprise-siem/protocol/openid-connect/certs}
           audiences: ${OIDC_AUDIENCE:api-gateway}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    consumer:
+      group-id: threat-intelligence-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.trusted.packages: com.enterprise.siem.common.model
+        spring.json.value.default.type: com.enterprise.siem.common.model.SecurityEvent
+        spring.json.use.type.headers: false
+
+siem:
+  threat-intel:
+    # Loads a handful of clearly labelled SIMULATED_DEMO indicators (documentation IP ranges and the
+    # EICAR test-file hashes) into an empty table. No external feeds are used or imitated.
+    seed-demo: ${SIEM_THREAT_INTEL_SEED_DEMO:false}
 
 server:
   port: ${SERVER_PORT:8086}

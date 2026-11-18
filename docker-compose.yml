@@ -307,10 +307,21 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Xss512k"
       SERVER_PORT: 8086
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-siem}
+      # Least-privilege service role when configured; falls back to the bootstrap role (v1 setups).
+      SPRING_DATASOURCE_USERNAME: ${SIEM_DB_USER:-${POSTGRES_USER:-siem_app}}
+      SPRING_DATASOURCE_PASSWORD: ${SIEM_DB_PASSWORD:-${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}}
+      SIEM_THREAT_INTEL_SEED_DEMO: ${SIEM_THREAT_INTEL_SEED_DEMO:-true}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:18088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     depends_on:
-      - keycloak
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
 
   audit-service:
     mem_limit: 448m
@@ -324,10 +335,20 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Xss512k"
       SERVER_PORT: 8087
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-siem}
+      # Least-privilege service role when configured; falls back to the bootstrap role (v1 setups).
+      SPRING_DATASOURCE_USERNAME: ${SIEM_DB_USER:-${POSTGRES_USER:-siem_app}}
+      SPRING_DATASOURCE_PASSWORD: ${SIEM_DB_PASSWORD:-${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:18088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     depends_on:
-      - keycloak
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
 
   search-service:
     mem_limit: 448m
