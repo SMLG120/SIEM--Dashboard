@@ -4,16 +4,19 @@ Verification steps and fixes for the local Docker Compose stack. See [deployment
 
 ## PostgreSQL Persistence
 
-Events, alerts, and incidents are durably stored in the shared `siem` database (owned tables per service, idempotent `schema.sql` applied on startup):
+PostgreSQL is the system of record. Each service applies its own versioned Flyway migrations from `db/migration/<service>`. Every service tracks them in its own history table (`flyway_history_<service>`), with baseline version 0, so v1 databases are adopted in place.
 
-| Table | Owner | Persisted data |
-|-------|-------|----------------|
-| `siem_event` | ingestion-service | Full security events |
-| `siem_alert` | alert-service | Alerts + `assigned_to` |
-| `siem_alert_note` | alert-service | Analyst notes per alert |
-| `siem_incident` | incident-service | Incident envelope + JSON child collection (`related_alerts`, `timeline`, `notes` in `payload`) |
+| Table | Owner | Data |
+|-------|-------|------|
+| `siem_event`, `siem_outbox` | ingestion | Events (with `attributes` JSON) and the transactional outbox |
+| `siem_alert`, `siem_alert_note`, `siem_alert_history` | alert | Alerts with rule version, ATT&CK and evidence; notes; append-only workflow history |
+| `siem_incident`, `siem_incident_alert` | incident | Incidents (timeline and notes in `payload`) and alert links |
+| `siem_indicator`, `siem_sighting` | threat-intelligence | Analyst/demo indicators and the events that matched them |
+| `siem_audit_log` | audit | Append-only audit trail |
 
-Each service keeps its bounded in-memory store as the low-latency read model, writes through to PostgreSQL on every mutation, and rehydrates the store from the database at startup. This removes the "empty lists after restart" behavior for the three domain stores. (Detection-service keeps only a bounded in-memory recent-alert window; that one still uses the offset-reset procedure below if you replay.)
+APIs read straight from PostgreSQL, so lists survive restarts. The exception is detection: its correlation state and recent-alert window are in memory, by design.
+
+**Upgrading a v1 database:** start the v2 services against the existing volume. The migrations add columns, tables and indexes without rewriting data. Incident links are backfilled from each incident's `payload`. This was verified on a copy of a v1 database: all 76 events, 64 alerts and 24 incidents were preserved, and 64 links were backfilled. For production, also run `infrastructure/postgres/adopt-app-role.sql` once to move table ownership to the least-privilege `siem_service` role (see [production.md](production.md)).
 
 ## Verification Checklist
 
@@ -21,10 +24,13 @@ Each service keeps its bounded in-memory store as the low-latency read model, wr
 - Sign in as `admin` with `SIEM_DEMO_PASSWORD`.
 - `http://localhost:18080/actuator/health` returns gateway health; `GET /api/events` returns `401` without a token.
 - After `scripts/ingest-demo-events.sh`: `GET /api/events`, `/api/detection/summary`, `/api/rules`, `/api/alerts`, and `/api/incidents` return data.
-- PostgreSQL persistence: restart a service (e.g. `docker compose restart alert-service`) — alerts/incidents remain listed because they are rehydrated from the DB on startup.
+- PostgreSQL persistence: restart a service (e.g. `docker compose restart alert-service`). Alerts and incidents remain listed.
+- v2 scenario: `scripts/ingest-demo-events.sh sample-data/v2-attack-scenario.json`. `GET /api/alerts/search?ruleId=SIEM-1009` then returns an alert, and so does each of `SIEM-1008`…`SIEM-1018` except `SIEM-1013`, and `GET /api/threat-intel/sightings` lists matches.
+- Audit: as a manager, disable and re-enable a rule. `GET /api/audit/events?resourceType=RULE` shows both changes with your username.
+- Dead letters: topics `siem.events.DLT` / `siem.alerts.DLT` stay empty during normal operation. A message there is a poison record worth inspecting.
 - Alert workflow endpoints return `200`: `/api/alerts/{id}/acknowledge|investigate|resolve|reopen|assign|notes`, `/api/alerts/{id}/workflow`.
 - Incident endpoints return `200`: `GET /api/incidents`, `GET /api/incidents/{id}`, `PATCH`, `POST /{id}/notes`, `POST /{id}/alerts`.
-- `http://localhost:18090` (Kafka UI, `docker compose --profile tools up -d kafka-ui`) shows topics `siem.events`, `siem.alerts`, `siem.incidents`, `siem.rules`.
+- `http://localhost:18090` (Kafka UI, `docker compose --profile tools up -d kafka-ui`) shows topics `siem.events`, `siem.alerts`, `siem.incidents`, `siem.rules`, `siem.audit` and the `*.DLT` topics.
 - Rate limiting: burst a routed endpoint (e.g. 60 parallel `GET /api/detection/summary`) and confirm the excess returns `429` with `X-RateLimit-*` headers (default replenish 20/s, burst 40; override via `SIEM_RATE_LIMIT_REPLENISH` / `SIEM_RATE_LIMIT_BURST`).
 - Rule updates: `POST /api/rules/{id}/disable` flips the rule to `enabled:false` in `GET /api/rules`; unknown id → `404`, bad severity → `400`.
 - Search: after ingest, `GET /api/search/summary` returns `eventsCount`/`alertsCount` plus `eventsBySeverity`/`alertsBySeverity` buckets; `GET /api/search/events?q=ransomware` returns matches; `http://localhost:19200/_cat/indices` shows `siem-events` and `siem-alerts`.
@@ -34,7 +40,7 @@ Each service keeps its bounded in-memory store as the low-latency read model, wr
 
 ## Troubleshooting
 
-**Services come back with empty lists after restart.** Events, alerts, and incidents are now persisted in PostgreSQL and hydrated on startup, so these stores survive restarts. Detection-service still keeps a bounded in-memory recent-alert window, and Kafka consumer groups commit offsets, so a restarted service only receives new messages. Replay the topics by resetting the consumer-group offsets while the services are stopped:
+**Replaying a topic.** Consumers commit offsets, so a restarted service receives only new messages. Every consumer is idempotent, so replaying is safe. To reprocess, reset the consumer group's offsets while the services are stopped:
 
 ```bash
 docker compose stop alert-service incident-service
@@ -55,4 +61,8 @@ docker compose start alert-service incident-service
 
 **Prometheus targets are `down`.** Scraping needs `/actuator/prometheus` to be `permitAll` in each service `SecurityConfig` (401 responses mark targets down). The bundled `prometheus.yml` also relabels `job` into an `application` label so the Grafana dashboard panels resolve.
 
-**Search returns empty results or empty severity bars.** With the OpenSearch index, terms aggregations must target `severity.keyword` (analyzed `text` fields cannot be aggregated) and free-text search is a wildcard `query_string` so `ransomware` matches `RANSOMWARE_ACTIVITY`. Verify documents landed via `curl localhost:19200/_cat/indices`.
+**Search returns empty results or empty severity bars.** The search service creates explicit mappings at startup (`dynamic: false`; text fields have a `.keyword` sub-field used for aggregations). Indices auto-created by v1 have dynamic mappings and still work. Queries use `simple_query_string`: use `ransom*` for a prefix match. Check that documents landed with `curl localhost:19200/_cat/indices`. If OpenSearch is down, search endpoints return `503` and indexing retries, then dead-letters.
+
+**Rule change returns `503`.** The detection service publishes the change to Kafka *before* applying it, so it is never applied on only one instance. Check that Kafka is healthy and retry.
+
+**Audit log is missing an alert change.** Alert history is forwarded to `siem.audit` after commit, on a best-effort basis. The authoritative copy is always `GET /api/alerts/{id}/history`.

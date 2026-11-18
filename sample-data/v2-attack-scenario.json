@@ -1,0 +1,310 @@
+[
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "LOW",
+    "sourceIp": "198.51.100.23",
+    "userName": "user0"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "LOW",
+    "sourceIp": "198.51.100.23",
+    "userName": "user1"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "LOW",
+    "sourceIp": "198.51.100.23",
+    "userName": "user2"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "LOW",
+    "sourceIp": "198.51.100.23",
+    "userName": "user3"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "LOW",
+    "sourceIp": "198.51.100.23",
+    "userName": "user4"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "LOW",
+    "userName": "carol",
+    "sourceIp": "203.0.113.9"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "LOW",
+    "userName": "carol",
+    "sourceIp": "203.0.113.9"
+  },
+  {
+    "eventType": "LOGIN_FAILURE",
+    "severity": "LOW",
+    "userName": "carol",
+    "sourceIp": "203.0.113.9"
+  },
+  {
+    "eventType": "LOGIN_SUCCESS",
+    "severity": "INFO",
+    "userName": "carol",
+    "sourceIp": "203.0.113.9"
+  },
+  {
+    "eventType": "PROCESS_CREATE",
+    "severity": "MEDIUM",
+    "sourceHost": "wks-017",
+    "userName": "dave",
+    "message": "powershell.exe -nop -w hidden -EncodedCommand SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQA"
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 20
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 21
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 22
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 23
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 24
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 25
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 26
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 27
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 28
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 29
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 30
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 31
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 32
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 33
+  },
+  {
+    "eventType": "FIREWALL_DENY",
+    "severity": "LOW",
+    "sourceIp": "203.0.113.77",
+    "destinationIp": "10.0.0.5",
+    "destinationPort": 34
+  },
+  {
+    "eventType": "NETWORK_FLOW",
+    "severity": "INFO",
+    "sourceIp": "10.0.8.15",
+    "destinationIp": "198.51.100.200",
+    "destinationPort": 443,
+    "attributes": {
+      "bytesOut": "200000000"
+    }
+  },
+  {
+    "eventType": "NETWORK_FLOW",
+    "severity": "INFO",
+    "sourceIp": "10.0.8.15",
+    "destinationIp": "198.51.100.200",
+    "destinationPort": 443,
+    "attributes": {
+      "bytesOut": "200000000"
+    }
+  },
+  {
+    "eventType": "NETWORK_FLOW",
+    "severity": "INFO",
+    "sourceIp": "10.0.8.15",
+    "destinationIp": "198.51.100.200",
+    "destinationPort": 443,
+    "attributes": {
+      "bytesOut": "200000000"
+    }
+  },
+  {
+    "eventType": "OUTBOUND_CONNECTION",
+    "severity": "LOW",
+    "sourceIp": "10.0.4.40",
+    "destinationIp": "198.51.100.66",
+    "destinationPort": 4444
+  },
+  {
+    "eventType": "FILE_CREATED",
+    "severity": "LOW",
+    "sourceHost": "wks-008",
+    "userName": "erin",
+    "attributes": {
+      "fileHash": "44d88612fea8a8f36de82e1278abb02f",
+      "path": "C:\\Users\\erin\\Downloads\\eicar.com"
+    }
+  },
+  {
+    "eventType": "AUDIT_LOG_CLEARED",
+    "severity": "MEDIUM",
+    "sourceHost": "dc-01",
+    "userName": "admin.temp"
+  },
+  {
+    "eventType": "GROUP_MEMBERSHIP_ADD",
+    "severity": "MEDIUM",
+    "userName": "it.ops",
+    "attributes": {
+      "group": "Domain Admins",
+      "member": "frank"
+    }
+  },
+  {
+    "eventType": "USER_CREATED",
+    "severity": "INFO",
+    "userName": "admin.grace",
+    "attributes": {
+      "target": "tmp0"
+    }
+  },
+  {
+    "eventType": "USER_CREATED",
+    "severity": "INFO",
+    "userName": "admin.grace",
+    "attributes": {
+      "target": "tmp1"
+    }
+  },
+  {
+    "eventType": "USER_CREATED",
+    "severity": "INFO",
+    "userName": "admin.grace",
+    "attributes": {
+      "target": "tmp2"
+    }
+  },
+  {
+    "eventType": "USER_CREATED",
+    "severity": "INFO",
+    "userName": "admin.grace",
+    "attributes": {
+      "target": "tmp3"
+    }
+  },
+  {
+    "eventType": "USER_CREATED",
+    "severity": "INFO",
+    "userName": "admin.grace",
+    "attributes": {
+      "target": "tmp4"
+    }
+  },
+  {
+    "eventType": "USER_CREATED",
+    "severity": "INFO",
+    "userName": "admin.grace",
+    "attributes": {
+      "target": "tmp5"
+    }
+  },
+  {
+    "eventType": "USER_CREATED",
+    "severity": "INFO",
+    "userName": "admin.grace",
+    "attributes": {
+      "target": "tmp6"
+    }
+  },
+  {
+    "eventType": "USER_CREATED",
+    "severity": "INFO",
+    "userName": "admin.grace",
+    "attributes": {
+      "target": "tmp7"
+    }
+  },
+  {
+    "eventType": "USER_CREATED",
+    "severity": "INFO",
+    "userName": "admin.grace",
+    "attributes": {
+      "target": "tmp8"
+    }
+  },
+  {
+    "eventType": "USER_CREATED",
+    "severity": "INFO",
+    "userName": "admin.grace",
+    "attributes": {
+      "target": "tmp9"
+    }
+  }
+]
