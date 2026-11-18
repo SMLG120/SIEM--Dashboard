@@ -31,7 +31,9 @@ class GatewaySecurityConfig {
                 .cors(Customizer.withDefaults())
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .pathMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
+                        // Prometheus is scraped on the internal network; Caddy only forwards /api/* publicly.
+                        .pathMatchers("/actuator/health", "/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
+                        .pathMatchers("/actuator/**").denyAll()
                         .pathMatchers("/api/users/**").hasRole(SiemRoles.ADMIN)
                         .pathMatchers(HttpMethod.GET, "/api/events/**").hasAnyRole(
                                 SiemRoles.ADMIN,
@@ -72,7 +74,19 @@ class GatewaySecurityConfig {
                                 SiemRoles.SECURITY_ANALYST,
                                 SiemRoles.VIEWER
                         )
+                        // Rule dry-runs have no side effects.
+                        .pathMatchers(HttpMethod.POST, "/api/rules/test").hasAnyRole(
+                                SiemRoles.ADMIN,
+                                SiemRoles.SOC_MANAGER,
+                                SiemRoles.SECURITY_ANALYST
+                        )
                         .pathMatchers("/api/rules/**", "/api/detection/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
+                        .pathMatchers(HttpMethod.GET, "/api/threat-intel/**").hasAnyRole(
+                                SiemRoles.ADMIN,
+                                SiemRoles.SOC_MANAGER,
+                                SiemRoles.SECURITY_ANALYST,
+                                SiemRoles.VIEWER
+                        )
                         .pathMatchers("/api/threat-intel/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
                         .pathMatchers(HttpMethod.GET, "/api/search/**").hasAnyRole(
                                 SiemRoles.ADMIN,

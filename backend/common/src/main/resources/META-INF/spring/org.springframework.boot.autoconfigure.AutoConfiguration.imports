@@ -1,1 +1,2 @@
 com.enterprise.siem.common.kafka.SiemKafkaErrorHandlingAutoConfiguration
+com.enterprise.siem.common.web.SiemWebAutoConfiguration

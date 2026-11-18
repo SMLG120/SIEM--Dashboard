@@ -19,6 +19,10 @@ spring:
         webflux:
           default-filters:
             - SecureHeaders
+            # Rejects bodies declared larger than this (batch ingestion of 500 events fits well within).
+            - name: RequestSize
+              args:
+                maxSize: ${SIEM_MAX_REQUEST_SIZE:2MB}
             - name: RequestRateLimiter
               args:
                 redis-rate-limiter.replenishRate: ${SIEM_RATE_LIMIT_REPLENISH:20}
@@ -70,10 +74,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus,gateway
+        # The gateway endpoint (route table, filters, upstream URLs) is deliberately not exposed.
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
         enabled: true
+      show-details: never
     gateway:
-      enabled: true
+      access: none
