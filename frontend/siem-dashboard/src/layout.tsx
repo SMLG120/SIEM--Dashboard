@@ -1,15 +1,16 @@
-import { Activity, Database, Globe2, LogOut, RadioTower, Search, Shield, ShieldAlert, Siren, UserRound } from "lucide-react";
+import { Activity, Crosshair, Database, Globe2, LogOut, RadioTower, Search, Shield, ShieldAlert, Siren, UserRound } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { logout, type AuthState } from "./auth";
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
   "/": { title: "Command Overview", subtitle: "Security Operations Center" },
-  "/events": { title: "Security Events", subtitle: "Event ingestion and query" },
-  "/alerts": { title: "Security Alerts", subtitle: "Detection and triage" },
-  "/incidents": { title: "Incidents", subtitle: "Alert correlation and investigation" },
-  "/intelligence": { title: "Threat Intelligence", subtitle: "Detection rules and indicators" },
-  "/search": { title: "Search & Analytics", subtitle: "Indexed event and alert search" },
-  "/platform": { title: "Platform", subtitle: "Infrastructure and services" }
+  "/events": { title: "Live Events", subtitle: "Ingestion stream and query" },
+  "/alerts": { title: "Alerts", subtitle: "Triage queue with detection evidence" },
+  "/incidents": { title: "Incident Investigation", subtitle: "Correlated alerts, timeline and notes" },
+  "/rules": { title: "Detection Rules", subtitle: "Catalogue, MITRE ATT&CK coverage and rule testing" },
+  "/threat-intel": { title: "Threat Intel", subtitle: "Curated indicators and sightings" },
+  "/search": { title: "Search", subtitle: "Indexed event and alert search" },
+  "/platform": { title: "Platform Health", subtitle: "Services, pipeline and audit trail" }
 };
 
 export function AppLayout({ auth }: { auth: AuthState }) {
@@ -26,10 +27,10 @@ export function AppLayout({ auth }: { auth: AuthState }) {
         </div>
         <nav>
           <NavLink to="/" end>
-            <Activity size={18} /> Dashboard
+            <Activity size={18} /> Overview
           </NavLink>
           <NavLink to="/events">
-            <RadioTower size={18} /> Events
+            <RadioTower size={18} /> Live Events
           </NavLink>
           <NavLink to="/alerts">
             <Siren size={18} /> Alerts
@@ -37,14 +38,17 @@ export function AppLayout({ auth }: { auth: AuthState }) {
           <NavLink to="/incidents">
             <ShieldAlert size={18} /> Incidents
           </NavLink>
-          <NavLink to="/intelligence">
-            <Globe2 size={18} /> Intelligence
+          <NavLink to="/rules">
+            <Crosshair size={18} /> Detection Rules
+          </NavLink>
+          <NavLink to="/threat-intel">
+            <Globe2 size={18} /> Threat Intel
           </NavLink>
           <NavLink to="/search">
             <Search size={18} /> Search
           </NavLink>
           <NavLink to="/platform">
-            <Database size={18} /> Platform
+            <Database size={18} /> Platform Health
           </NavLink>
         </nav>
       </aside>

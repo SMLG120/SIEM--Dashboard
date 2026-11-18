@@ -14,6 +14,26 @@ export type SecurityEvent = {
   destinationPort?: number;
   userName?: string;
   message?: string;
+  schemaVersion?: number;
+  attributes?: Record<string, string>;
+};
+
+export type MitreTechnique = {
+  tactic: string;
+  techniqueId: string;
+  technique: string;
+};
+
+/** Why an alert fired: the matched clauses and the events that satisfied them. */
+export type AlertEvidence = {
+  ruleType: "SINGLE" | "THRESHOLD" | "SEQUENCE";
+  matchedConditions: string[];
+  eventIds: string[];
+  eventCount: number;
+  groupKey?: string;
+  windowSeconds?: number;
+  firstSeen?: string;
+  lastSeen?: string;
 };
 
 export type AlertStatus = "OPEN" | "ACKNOWLEDGED" | "INVESTIGATING" | "RESOLVED";
@@ -30,6 +50,28 @@ export type SiemAlert = {
   sourceIp?: string;
   userName?: string;
   status: AlertStatus;
+  ruleVersion?: number;
+  mitre?: MitreTechnique[];
+  evidence?: AlertEvidence;
+};
+
+export type AlertHistoryEntry = {
+  alertId: string;
+  action: string;
+  fromStatus?: AlertStatus;
+  toStatus?: AlertStatus;
+  actor: string;
+  detail?: string;
+  occurredAt: string;
+};
+
+export type AlertPage = { items: SiemAlert[]; total: number; page: number; size: number };
+
+export type AlertSummary = {
+  total: number;
+  byStatus: Record<string, number>;
+  openBySeverity: Record<string, number>;
+  topRules: { ruleId: string; ruleName: string; alerts: number }[];
 };
 
 export type AlertNote = {
@@ -86,24 +128,110 @@ export type Incident = {
   notes: IncidentNote[];
 };
 
+export type RuleCondition = {
+  eventTypes?: string[];
+  category?: string;
+  severityMin?: string;
+  messageContainsAny?: string[];
+  attributeContainsAny?: Record<string, string[]>;
+  attributeEquals?: Record<string, string[]>;
+  destinationPorts?: number[];
+  externalDestination?: boolean;
+};
+
+export type RuleType = "SINGLE" | "THRESHOLD" | "SEQUENCE";
+
 export type DetectionRule = {
   id: string;
+  version: number;
   name: string;
   description?: string;
   severity: EventSeverity;
   enabled: boolean;
-  condition: {
-    eventTypes?: string[];
-    category?: string;
-    severityMin?: string;
+  type: RuleType;
+  condition: RuleCondition;
+  threshold?: {
+    groupBy: string[];
+    windowSeconds: number;
+    count?: number;
+    distinctField?: string;
+    sumAttribute?: string;
+    minimum?: number;
+    maxJitterRatio?: number;
   };
+  sequence?: {
+    groupBy: string[];
+    windowSeconds: number;
+    steps: { name: string; condition: RuleCondition; minCount?: number }[];
+  };
+  suppressionSeconds?: number;
+  mitre: MitreTechnique[];
+  falsePositives: string[];
+  examples: { match: Partial<SecurityEvent>[]; noMatch: Partial<SecurityEvent>[] };
+};
+
+export type RuleChange = {
+  ruleId: string;
+  action: "ENABLE" | "DISABLE" | "SET_SEVERITY";
+  severity?: EventSeverity;
+  actor?: string;
+  changedAt?: string;
+  resultingVersion?: number;
+};
+
+export type RuleTestResult = {
+  ruleId: string;
+  ruleVersion: number;
+  ruleType: RuleType;
+  alerts: SiemAlert[];
+  examplesPassed?: boolean;
+  checks?: Record<string, boolean>;
 };
 
 export type DetectionSummary = {
   eventsEvaluated: number;
   alertsGenerated: number;
   rulesEnabled: number;
+  rulesTotal?: number;
+  alertsByRule?: Record<string, number>;
+  detectionLatencyMeanMs?: number;
+  detectionLatencyP95Ms?: number;
   recentAlerts: SiemAlert[];
+};
+
+export type IndicatorType = "IP" | "DOMAIN" | "MD5" | "SHA1" | "SHA256";
+
+export type Indicator = {
+  id: string;
+  type: IndicatorType;
+  value: string;
+  severity: EventSeverity;
+  description?: string;
+  source: "ANALYST" | "SIMULATED_DEMO" | string;
+  createdBy: string;
+  createdAt: string;
+  expiresAt?: string;
+  active: boolean;
+};
+
+export type Sighting = {
+  indicatorId: string;
+  type: IndicatorType;
+  value: string;
+  eventId: string;
+  field: string;
+  eventTime: string;
+  recordedAt: string;
+};
+
+export type AuditEntry = {
+  id: number;
+  occurredAt: string;
+  actor: string;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  detail?: string;
 };
 
 export type SearchHit = {
@@ -138,6 +266,7 @@ export type IngestEventInput = {
   destinationPort?: number;
   userName?: string;
   message?: string;
+  attributes?: Record<string, string>;
 };
 
 export type CreateIncidentInput = {
@@ -189,9 +318,25 @@ async function sendJson<T>(method: string, path: string, body?: unknown, signal?
     signal
   });
   if (!response.ok) {
-    throw new ApiError(`${method} ${path} failed: HTTP ${response.status}`, response.status);
+    throw new ApiError(await errorMessage(response, method, path), response.status);
+  }
+  if (response.status === 204) {
+    return undefined as T;
   }
   return (await response.json()) as T;
+}
+
+/** Prefers the server's problem-detail text (e.g. "Cannot move alert from RESOLVED to ACKNOWLEDGED"). */
+async function errorMessage(response: Response, method: string, path: string) {
+  try {
+    const body = (await response.json()) as { detail?: string; message?: string };
+    if (body.detail || body.message) {
+      return `${body.detail ?? body.message} (HTTP ${response.status})`;
+    }
+  } catch {
+    // not JSON
+  }
+  return `${method} ${path} failed: HTTP ${response.status}`;
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
@@ -204,6 +349,10 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
 
 export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return sendJson<T>("PATCH", path, body);
+}
+
+export async function apiDelete(path: string): Promise<void> {
+  return sendJson<void>("DELETE", path);
 }
 
 export type ServiceHealth = "ready" | "restricted" | "offline";
@@ -251,7 +400,16 @@ export const commonEventTypes = [
   "C2_BEACON",
   "TOR_UNKNOWN",
   "CONFIG_CHANGE",
-  "PATCH_APPLIED"
+  "PATCH_APPLIED",
+  "POWERSHELL",
+  "PROCESS_CREATE",
+  "FIREWALL_DENY",
+  "NETWORK_FLOW",
+  "OUTBOUND_CONNECTION",
+  "FILE_CREATED",
+  "AUDIT_LOG_CLEARED",
+  "GROUP_MEMBERSHIP_ADD",
+  "USER_CREATED"
 ];
 
 export const eventSeverities: EventSeverity[] = ["INFO", "LOW", "MEDIUM", "HIGH", "CRITICAL"];
