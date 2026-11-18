@@ -12,6 +12,7 @@ public record UpdateIncidentRequest(
         EventSeverity severity,
         IncidentStatus status,
         @Size(max = 128)
+        @jakarta.validation.constraints.Pattern(regexp = "^[A-Za-z0-9._@-]*$", message = "assignedTo must be a username")
         String assignedTo
 ) {
 }

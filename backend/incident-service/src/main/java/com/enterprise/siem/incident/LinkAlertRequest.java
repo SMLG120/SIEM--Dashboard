@@ -15,6 +15,7 @@ public record LinkAlertRequest(
         @Size(max = 64)
         String eventType,
         EventSeverity severity,
+        @com.enterprise.siem.common.validation.IpAddress
         @Size(max = 64)
         String sourceIp,
         @Size(max = 2000)
