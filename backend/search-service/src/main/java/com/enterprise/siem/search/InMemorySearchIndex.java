@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +29,14 @@ class InMemorySearchIndex implements SearchIndex {
             if (docs.containsKey(id)) {
                 docs.remove(id);
             }
-            docs.put(id, Map.copyOf(document));
+            // Map.copyOf rejects null values, and most events leave some fields empty.
+            Map<String, Object> present = new LinkedHashMap<>();
+            document.forEach((key, value) -> {
+                if (value != null) {
+                    present.put(key, value);
+                }
+            });
+            docs.put(id, Collections.unmodifiableMap(present));
             while (docs.size() > MAX_DOCS_PER_INDEX) {
                 docs.remove(docs.keySet().iterator().next());
             }

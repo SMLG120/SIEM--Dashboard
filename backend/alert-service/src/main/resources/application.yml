@@ -1,13 +1,22 @@
 spring:
+  # RFC 9457 bodies: ResponseStatusException reasons (e.g. invalid transitions) reach the client.
+  mvc:
+    problemdetails:
+      enabled: true
   application:
     name: alert-service
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:15432/siem}
     username: ${DB_USERNAME:siem_app}
     password: ${DB_PASSWORD:}
-  sql:
-    init:
-      mode: always
+  flyway:
+    # One history table per service: the services share the siem database but own separate tables.
+    table: flyway_history_alert
+    locations: classpath:db/migration/alert
+    # Existing databases predate Flyway. Baselining at 0 still runs V1, whose CREATE ... IF NOT EXISTS
+    # statements are no-ops on those databases and create the schema on fresh ones.
+    baseline-on-migrate: true
+    baseline-version: 0
   security:
     oauth2:
       resourceserver:
@@ -23,8 +32,16 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
-        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
         spring.json.trusted.packages: com.enterprise.siem.common.model
+    producer:
+      # Alert workflow history forwarded to siem.audit.
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      acks: all
+      properties:
+        spring.json.add.type.headers: false
+        max.block.ms: 5000
 
 server:
   port: ${SERVER_PORT:8084}

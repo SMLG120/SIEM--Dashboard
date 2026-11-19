@@ -27,8 +27,13 @@ public class IncidentKafkaConfig {
     }
 
     public void publish(String incidentId, String title, String action) {
+        publish(new IncidentEvent(incidentId, title, action, Instant.now()));
+    }
+
+    /** Best effort: the incident row and its timeline are the record; this is a notification. */
+    public void publish(IncidentEvent event) {
         try {
-            kafkaTemplate.send(INCIDENTS_TOPIC, incidentId, new IncidentEvent(incidentId, title, action, Instant.now()));
+            kafkaTemplate.send(INCIDENTS_TOPIC, event.incidentId(), event);
         } catch (Exception e) {
             log.warn("Failed to publish incident event to {}: {}", INCIDENTS_TOPIC, e.getMessage());
         }

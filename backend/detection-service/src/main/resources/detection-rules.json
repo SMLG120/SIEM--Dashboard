@@ -1,76 +1,1725 @@
 [
   {
     "id": "SIEM-1001",
+    "version": 1,
     "name": "Critical Malware Detected",
     "description": "Endpoint protection reported a malware or ransomware detection.",
     "severity": "CRITICAL",
     "enabled": true,
+    "type": "SINGLE",
     "condition": {
-      "eventTypes": ["MALWARE_DETECTED", "RANSOMWARE_ACTIVITY", "RANSOMWARE"],
+      "eventTypes": [
+        "MALWARE_DETECTED",
+        "RANSOMWARE_ACTIVITY",
+        "RANSOMWARE"
+      ],
       "severityMin": "HIGH"
+    },
+    "mitre": [
+      {
+        "tactic": "Execution",
+        "techniqueId": "T1204",
+        "technique": "User Execution"
+      },
+      {
+        "tactic": "Impact",
+        "techniqueId": "T1486",
+        "technique": "Data Encrypted for Impact"
+      }
+    ],
+    "falsePositives": [
+      "EDR test detections (e.g. EICAR) run by the security team",
+      "Quarantined files re-scanned after restore"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "MALWARE_DETECTED",
+          "severity": "HIGH",
+          "sourceIp": "10.0.4.21",
+          "sourceHost": "wks-042"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "MALWARE_DETECTED",
+          "severity": "MEDIUM",
+          "sourceIp": "10.0.4.21"
+        }
+      ]
     }
   },
   {
     "id": "SIEM-1002",
+    "version": 1,
     "name": "Repeated Login Failures",
     "description": "High-severity authentication failures indicate a brute-force attempt.",
     "severity": "HIGH",
     "enabled": true,
+    "type": "SINGLE",
     "condition": {
-      "eventTypes": ["LOGIN_FAILURE"],
+      "eventTypes": [
+        "LOGIN_FAILURE"
+      ],
       "severityMin": "HIGH"
+    },
+    "mitre": [
+      {
+        "tactic": "Credential Access",
+        "techniqueId": "T1110",
+        "technique": "Brute Force"
+      }
+    ],
+    "falsePositives": [
+      "Source systems that already aggregate failures and emit one HIGH event for a locked account",
+      "See SIEM-1008 for the volume-based variant"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "HIGH",
+          "sourceIp": "198.51.100.7",
+          "userName": "alice"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.7",
+          "userName": "alice"
+        }
+      ]
     }
   },
   {
     "id": "SIEM-1003",
+    "version": 1,
     "name": "Privilege Escalation Attempt",
     "description": "A privilege escalation or unauthorized elevation attempt was observed.",
     "severity": "CRITICAL",
     "enabled": true,
+    "type": "SINGLE",
     "condition": {
-      "eventTypes": ["PRIVILEGE_ESCALATION", "TOR_UNKNOWN"],
+      "eventTypes": [
+        "PRIVILEGE_ESCALATION",
+        "TOR_UNKNOWN"
+      ],
       "severityMin": "HIGH"
+    },
+    "mitre": [
+      {
+        "tactic": "Privilege Escalation",
+        "techniqueId": "T1068",
+        "technique": "Exploitation for Privilege Escalation"
+      },
+      {
+        "tactic": "Command and Control",
+        "techniqueId": "T1090.003",
+        "technique": "Proxy: Multi-hop Proxy"
+      }
+    ],
+    "falsePositives": [
+      "Approved admin elevation (sudo/runas) misreported as escalation by the source",
+      "TOR_UNKNOWN is grouped here for backwards compatibility; it indicates anonymised access rather than elevation"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "PRIVILEGE_ESCALATION",
+          "severity": "HIGH",
+          "userName": "svc-backup",
+          "sourceHost": "srv-db-01"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "PRIVILEGE_ESCALATION",
+          "severity": "MEDIUM",
+          "userName": "svc-backup"
+        }
+      ]
     }
   },
   {
     "id": "SIEM-1004",
+    "version": 1,
     "name": "Network Reconnaissance Activity",
     "description": "Port scans or network reconnaissance patterns from a host.",
     "severity": "MEDIUM",
     "enabled": true,
+    "type": "SINGLE",
     "condition": {
-      "eventTypes": ["PORT_SCAN", "SCAN"],
+      "eventTypes": [
+        "PORT_SCAN",
+        "SCAN"
+      ],
       "severityMin": "MEDIUM"
+    },
+    "mitre": [
+      {
+        "tactic": "Discovery",
+        "techniqueId": "T1046",
+        "technique": "Network Service Discovery"
+      }
+    ],
+    "falsePositives": [
+      "Authorised vulnerability scanners (allow-list their source IPs)",
+      "Network monitoring tools"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "PORT_SCAN",
+          "severity": "MEDIUM",
+          "sourceIp": "203.0.113.50",
+          "destinationIp": "10.0.0.10"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "PORT_SCAN",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.50"
+        }
+      ]
     }
   },
   {
     "id": "SIEM-1005",
+    "version": 1,
     "name": "Data Exfiltration Attempt",
     "description": "Suspected exfiltration of data from the environment.",
     "severity": "CRITICAL",
     "enabled": true,
+    "type": "SINGLE",
     "condition": {
-      "eventTypes": ["DATA_EXFILTRATION"]
+      "eventTypes": [
+        "DATA_EXFILTRATION"
+      ]
+    },
+    "mitre": [
+      {
+        "tactic": "Exfiltration",
+        "techniqueId": "T1041",
+        "technique": "Exfiltration Over C2 Channel"
+      }
+    ],
+    "falsePositives": [
+      "DLP policies that flag sanctioned transfers to partners"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "DATA_EXFILTRATION",
+          "severity": "LOW",
+          "sourceIp": "10.0.8.15",
+          "destinationIp": "198.51.100.200"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "FILE_DOWNLOAD",
+          "severity": "HIGH",
+          "sourceIp": "10.0.8.15"
+        }
+      ]
     }
   },
   {
     "id": "SIEM-1006",
+    "version": 1,
     "name": "Suspicious Activity on Sensitive Asset",
     "description": "Any critical event regardless of type requires immediate attention.",
     "severity": "CRITICAL",
     "enabled": true,
+    "type": "SINGLE",
     "condition": {
       "severityMin": "CRITICAL"
+    },
+    "mitre": [],
+    "falsePositives": [
+      "Sources that over-grade routine events as CRITICAL; this rule overlaps with type-specific rules by design"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "CONFIG_CHANGE",
+          "severity": "CRITICAL",
+          "sourceHost": "fw-edge-01"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "CONFIG_CHANGE",
+          "severity": "HIGH",
+          "sourceHost": "fw-edge-01"
+        }
+      ]
     }
   },
   {
     "id": "SIEM-1007",
+    "version": 1,
     "name": "Command Shell or Payload Activity",
     "description": "Command-and-control or payload delivery indicators observed.",
     "severity": "HIGH",
     "enabled": true,
+    "type": "SINGLE",
     "condition": {
-      "eventTypes": ["COMMAND_SHELL", "POWERSHELL", "C2_BEACON", "WEBSHELL"]
+      "eventTypes": [
+        "COMMAND_SHELL",
+        "POWERSHELL",
+        "C2_BEACON",
+        "WEBSHELL"
+      ]
+    },
+    "mitre": [
+      {
+        "tactic": "Execution",
+        "techniqueId": "T1059",
+        "technique": "Command and Scripting Interpreter"
+      },
+      {
+        "tactic": "Command and Control",
+        "techniqueId": "T1071",
+        "technique": "Application Layer Protocol"
+      },
+      {
+        "tactic": "Persistence",
+        "techniqueId": "T1505.003",
+        "technique": "Server Software Component: Web Shell"
+      }
+    ],
+    "falsePositives": [
+      "Administrators using interactive shells on servers",
+      "Sources that report every PowerShell launch"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "WEBSHELL",
+          "severity": "MEDIUM",
+          "sourceHost": "web-01",
+          "message": "cmd.jsp invoked"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "PROCESS_CREATE",
+          "severity": "HIGH",
+          "sourceHost": "web-01"
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1008",
+    "version": 1,
+    "name": "Brute Force: Repeated Authentication Failures",
+    "description": "Five or more failed logins from one source IP within five minutes, regardless of how each event is graded.",
+    "severity": "HIGH",
+    "enabled": true,
+    "type": "THRESHOLD",
+    "suppressionSeconds": 900,
+    "condition": {
+      "eventTypes": [
+        "LOGIN_FAILURE"
+      ]
+    },
+    "threshold": {
+      "groupBy": [
+        "sourceIp"
+      ],
+      "windowSeconds": 300,
+      "count": 5
+    },
+    "mitre": [
+      {
+        "tactic": "Credential Access",
+        "techniqueId": "T1110.001",
+        "technique": "Brute Force: Password Guessing"
+      }
+    ],
+    "falsePositives": [
+      "Service accounts retrying a stale password after rotation",
+      "Many users behind one NAT/VPN egress IP"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.23",
+          "userName": "user0"
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:30Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.23",
+          "userName": "user1"
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:01:00Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.23",
+          "userName": "user2"
+        },
+        {
+          "id": "ex-3",
+          "timestamp": "2026-01-15T09:01:30Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.23",
+          "userName": "user3"
+        },
+        {
+          "id": "ex-4",
+          "timestamp": "2026-01-15T09:02:00Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.23",
+          "userName": "user4"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.23",
+          "userName": "bob"
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:02:00Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.23",
+          "userName": "bob"
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:04:00Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.23",
+          "userName": "bob"
+        },
+        {
+          "id": "ex-3",
+          "timestamp": "2026-01-15T09:06:00Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.23",
+          "userName": "bob"
+        },
+        {
+          "id": "ex-4",
+          "timestamp": "2026-01-15T09:08:00Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "sourceIp": "198.51.100.23",
+          "userName": "bob"
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1009",
+    "version": 1,
+    "name": "Successful Login After Repeated Failures",
+    "description": "Three or more failed logins for an account followed by a successful login within ten minutes: a possible successful brute force.",
+    "severity": "CRITICAL",
+    "enabled": true,
+    "type": "SEQUENCE",
+    "suppressionSeconds": 1800,
+    "condition": {},
+    "sequence": {
+      "groupBy": [
+        "userName"
+      ],
+      "windowSeconds": 600,
+      "steps": [
+        {
+          "name": "failures",
+          "condition": {
+            "eventTypes": [
+              "LOGIN_FAILURE"
+            ]
+          },
+          "minCount": 3
+        },
+        {
+          "name": "success",
+          "condition": {
+            "eventTypes": [
+              "LOGIN_SUCCESS"
+            ]
+          }
+        }
+      ]
+    },
+    "mitre": [
+      {
+        "tactic": "Credential Access",
+        "techniqueId": "T1110",
+        "technique": "Brute Force"
+      },
+      {
+        "tactic": "Initial Access",
+        "techniqueId": "T1078",
+        "technique": "Valid Accounts"
+      }
+    ],
+    "falsePositives": [
+      "A user mistyping their password a few times before succeeding (tune minCount for your environment)"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "userName": "carol",
+          "sourceIp": "203.0.113.9"
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:20Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "userName": "carol",
+          "sourceIp": "203.0.113.9"
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:40Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "userName": "carol",
+          "sourceIp": "203.0.113.9"
+        },
+        {
+          "id": "ex-3",
+          "timestamp": "2026-01-15T09:01:00Z",
+          "eventType": "LOGIN_SUCCESS",
+          "severity": "INFO",
+          "userName": "carol",
+          "sourceIp": "203.0.113.9"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "LOGIN_SUCCESS",
+          "severity": "INFO",
+          "userName": "carol"
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:10Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "userName": "carol"
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:20Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "userName": "carol"
+        },
+        {
+          "id": "ex-3",
+          "timestamp": "2026-01-15T09:00:30Z",
+          "eventType": "LOGIN_FAILURE",
+          "severity": "LOW",
+          "userName": "carol"
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1010",
+    "version": 1,
+    "name": "Suspicious PowerShell Execution",
+    "description": "PowerShell run with encoded commands, download cradles or in-memory execution.",
+    "severity": "HIGH",
+    "enabled": true,
+    "type": "SINGLE",
+    "condition": {
+      "eventTypes": [
+        "POWERSHELL",
+        "PROCESS_CREATE"
+      ],
+      "messageContainsAny": [
+        "-encodedcommand",
+        "-enc ",
+        "frombase64string",
+        "iex(",
+        "iex (",
+        "invoke-expression",
+        "downloadstring",
+        "downloadfile",
+        "-windowstyle hidden",
+        "-w hidden",
+        "-executionpolicy bypass",
+        "-ep bypass"
+      ]
+    },
+    "mitre": [
+      {
+        "tactic": "Execution",
+        "techniqueId": "T1059.001",
+        "technique": "Command and Scripting Interpreter: PowerShell"
+      },
+      {
+        "tactic": "Defense Evasion",
+        "techniqueId": "T1027",
+        "technique": "Obfuscated Files or Information"
+      }
+    ],
+    "falsePositives": [
+      "Management tooling (SCCM, Intune, RMM agents) that legitimately uses -EncodedCommand",
+      "Admin scripts launched with -ExecutionPolicy Bypass"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "PROCESS_CREATE",
+          "severity": "MEDIUM",
+          "sourceHost": "wks-017",
+          "userName": "dave",
+          "message": "powershell.exe -nop -w hidden -EncodedCommand SQBFAFgAIAAoAE4AZQB3AC0ATwBiAGoAZQBjAHQA"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "PROCESS_CREATE",
+          "severity": "MEDIUM",
+          "sourceHost": "wks-017",
+          "userName": "dave",
+          "message": "powershell.exe -File C:\\Scripts\\inventory.ps1"
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1011",
+    "version": 1,
+    "name": "Network Port Scan",
+    "description": "One source contacted 15 or more distinct destination ports within 60 seconds.",
+    "severity": "MEDIUM",
+    "enabled": true,
+    "type": "THRESHOLD",
+    "suppressionSeconds": 600,
+    "condition": {
+      "eventTypes": [
+        "CONNECTION_ATTEMPT",
+        "FIREWALL_DENY",
+        "NETWORK_CONNECTION"
+      ]
+    },
+    "threshold": {
+      "groupBy": [
+        "sourceIp"
+      ],
+      "windowSeconds": 60,
+      "distinctField": "destinationPort",
+      "minimum": 15
+    },
+    "mitre": [
+      {
+        "tactic": "Discovery",
+        "techniqueId": "T1046",
+        "technique": "Network Service Discovery"
+      }
+    ],
+    "falsePositives": [
+      "Authorised vulnerability scanners",
+      "Service discovery or monitoring agents"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 20
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 21
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:04Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 22
+        },
+        {
+          "id": "ex-3",
+          "timestamp": "2026-01-15T09:00:06Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 23
+        },
+        {
+          "id": "ex-4",
+          "timestamp": "2026-01-15T09:00:08Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 24
+        },
+        {
+          "id": "ex-5",
+          "timestamp": "2026-01-15T09:00:10Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 25
+        },
+        {
+          "id": "ex-6",
+          "timestamp": "2026-01-15T09:00:12Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 26
+        },
+        {
+          "id": "ex-7",
+          "timestamp": "2026-01-15T09:00:14Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 27
+        },
+        {
+          "id": "ex-8",
+          "timestamp": "2026-01-15T09:00:16Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 28
+        },
+        {
+          "id": "ex-9",
+          "timestamp": "2026-01-15T09:00:18Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 29
+        },
+        {
+          "id": "ex-10",
+          "timestamp": "2026-01-15T09:00:20Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 30
+        },
+        {
+          "id": "ex-11",
+          "timestamp": "2026-01-15T09:00:22Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 31
+        },
+        {
+          "id": "ex-12",
+          "timestamp": "2026-01-15T09:00:24Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 32
+        },
+        {
+          "id": "ex-13",
+          "timestamp": "2026-01-15T09:00:26Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 33
+        },
+        {
+          "id": "ex-14",
+          "timestamp": "2026-01-15T09:00:28Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 34
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:04Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-3",
+          "timestamp": "2026-01-15T09:00:06Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-4",
+          "timestamp": "2026-01-15T09:00:08Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-5",
+          "timestamp": "2026-01-15T09:00:10Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-6",
+          "timestamp": "2026-01-15T09:00:12Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-7",
+          "timestamp": "2026-01-15T09:00:14Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-8",
+          "timestamp": "2026-01-15T09:00:16Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-9",
+          "timestamp": "2026-01-15T09:00:18Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-10",
+          "timestamp": "2026-01-15T09:00:20Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-11",
+          "timestamp": "2026-01-15T09:00:22Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-12",
+          "timestamp": "2026-01-15T09:00:24Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-13",
+          "timestamp": "2026-01-15T09:00:26Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-14",
+          "timestamp": "2026-01-15T09:00:28Z",
+          "eventType": "FIREWALL_DENY",
+          "severity": "LOW",
+          "sourceIp": "203.0.113.77",
+          "destinationIp": "10.0.0.5",
+          "destinationPort": 443
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1012",
+    "version": 1,
+    "name": "Large Outbound Transfer to External Host",
+    "description": "More than 500 MB sent from one internal host to one external destination within an hour.",
+    "severity": "HIGH",
+    "enabled": true,
+    "type": "THRESHOLD",
+    "suppressionSeconds": 3600,
+    "condition": {
+      "eventTypes": [
+        "NETWORK_FLOW",
+        "OUTBOUND_TRANSFER"
+      ],
+      "externalDestination": true
+    },
+    "threshold": {
+      "groupBy": [
+        "sourceIp",
+        "destinationIp"
+      ],
+      "windowSeconds": 3600,
+      "sumAttribute": "bytesOut",
+      "minimum": 500000000
+    },
+    "mitre": [
+      {
+        "tactic": "Exfiltration",
+        "techniqueId": "T1048",
+        "technique": "Exfiltration Over Alternative Protocol"
+      },
+      {
+        "tactic": "Exfiltration",
+        "techniqueId": "T1567",
+        "technique": "Exfiltration Over Web Service"
+      }
+    ],
+    "falsePositives": [
+      "Backups or sync to sanctioned cloud storage",
+      "Large legitimate uploads (media, datasets)"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "NETWORK_FLOW",
+          "severity": "INFO",
+          "sourceIp": "10.0.8.15",
+          "destinationIp": "198.51.100.200",
+          "destinationPort": 443,
+          "attributes": {
+            "bytesOut": "200000000"
+          }
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:05:00Z",
+          "eventType": "NETWORK_FLOW",
+          "severity": "INFO",
+          "sourceIp": "10.0.8.15",
+          "destinationIp": "198.51.100.200",
+          "destinationPort": 443,
+          "attributes": {
+            "bytesOut": "200000000"
+          }
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:10:00Z",
+          "eventType": "NETWORK_FLOW",
+          "severity": "INFO",
+          "sourceIp": "10.0.8.15",
+          "destinationIp": "198.51.100.200",
+          "destinationPort": 443,
+          "attributes": {
+            "bytesOut": "200000000"
+          }
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "NETWORK_FLOW",
+          "severity": "INFO",
+          "sourceIp": "10.0.8.15",
+          "destinationIp": "10.0.9.20",
+          "destinationPort": 443,
+          "attributes": {
+            "bytesOut": "200000000"
+          }
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:05:00Z",
+          "eventType": "NETWORK_FLOW",
+          "severity": "INFO",
+          "sourceIp": "10.0.8.15",
+          "destinationIp": "10.0.9.20",
+          "destinationPort": 443,
+          "attributes": {
+            "bytesOut": "200000000"
+          }
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:10:00Z",
+          "eventType": "NETWORK_FLOW",
+          "severity": "INFO",
+          "sourceIp": "10.0.8.15",
+          "destinationIp": "10.0.9.20",
+          "destinationPort": 443,
+          "attributes": {
+            "bytesOut": "200000000"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1013",
+    "version": 1,
+    "name": "Command-and-Control Beaconing",
+    "description": "Eight or more connections from one host to one external destination at regular intervals within an hour.",
+    "severity": "HIGH",
+    "enabled": true,
+    "type": "THRESHOLD",
+    "suppressionSeconds": 3600,
+    "condition": {
+      "eventTypes": [
+        "NETWORK_CONNECTION",
+        "OUTBOUND_CONNECTION",
+        "HTTP_REQUEST"
+      ],
+      "externalDestination": true
+    },
+    "threshold": {
+      "groupBy": [
+        "sourceIp",
+        "destinationIp"
+      ],
+      "windowSeconds": 3600,
+      "count": 8,
+      "maxJitterRatio": 0.15
+    },
+    "mitre": [
+      {
+        "tactic": "Command and Control",
+        "techniqueId": "T1071.001",
+        "technique": "Application Layer Protocol: Web Protocols"
+      },
+      {
+        "tactic": "Command and Control",
+        "techniqueId": "T1573",
+        "technique": "Encrypted Channel"
+      }
+    ],
+    "falsePositives": [
+      "Software update checks, telemetry and heartbeats (allow-list known vendor destinations)",
+      "NTP and monitoring polls"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:01:01Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:02:00Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-3",
+          "timestamp": "2026-01-15T09:03:01Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-4",
+          "timestamp": "2026-01-15T09:04:00Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-5",
+          "timestamp": "2026-01-15T09:05:01Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-6",
+          "timestamp": "2026-01-15T09:06:00Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-7",
+          "timestamp": "2026-01-15T09:07:01Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:05Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:03:20Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-3",
+          "timestamp": "2026-01-15T09:03:30Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-4",
+          "timestamp": "2026-01-15T09:15:00Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-5",
+          "timestamp": "2026-01-15T09:15:05Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-6",
+          "timestamp": "2026-01-15T09:25:00Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        },
+        {
+          "id": "ex-7",
+          "timestamp": "2026-01-15T09:40:00Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "INFO",
+          "sourceIp": "10.0.4.33",
+          "destinationIp": "203.0.113.140",
+          "destinationPort": 443
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1014",
+    "version": 1,
+    "name": "Outbound Connection on Uncommon Port",
+    "description": "Internal host connected to an external address on a port commonly used by remote-access tools and C2 frameworks.",
+    "severity": "MEDIUM",
+    "enabled": true,
+    "type": "SINGLE",
+    "condition": {
+      "eventTypes": [
+        "NETWORK_CONNECTION",
+        "OUTBOUND_CONNECTION"
+      ],
+      "externalDestination": true,
+      "destinationPorts": [
+        1337,
+        4444,
+        5555,
+        6667,
+        8888,
+        9001,
+        31337
+      ]
+    },
+    "mitre": [
+      {
+        "tactic": "Command and Control",
+        "techniqueId": "T1571",
+        "technique": "Non-Standard Port"
+      }
+    ],
+    "falsePositives": [
+      "Developer tools or games using these ports",
+      "IRC (6667) where permitted"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "LOW",
+          "sourceIp": "10.0.4.40",
+          "destinationIp": "198.51.100.66",
+          "destinationPort": 4444
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "OUTBOUND_CONNECTION",
+          "severity": "LOW",
+          "sourceIp": "10.0.4.40",
+          "destinationIp": "10.0.0.66",
+          "destinationPort": 4444
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1015",
+    "version": 1,
+    "name": "Known Malware Test Indicator (EICAR)",
+    "description": "A file matching the EICAR anti-malware test file hash was observed. EICAR is harmless and used to verify that detection works end to end.",
+    "severity": "HIGH",
+    "enabled": true,
+    "type": "SINGLE",
+    "condition": {
+      "eventTypes": [
+        "FILE_CREATED",
+        "FILE_HASH_OBSERVED",
+        "PROCESS_CREATE"
+      ],
+      "attributeEquals": {
+        "fileHash": [
+          "44d88612fea8a8f36de82e1278abb02f",
+          "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f"
+        ]
+      }
+    },
+    "mitre": [
+      {
+        "tactic": "Execution",
+        "techniqueId": "T1204.002",
+        "technique": "User Execution: Malicious File"
+      }
+    ],
+    "falsePositives": [
+      "Deliberate EICAR tests by the security team (that is the point of this rule)"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "FILE_CREATED",
+          "severity": "LOW",
+          "sourceHost": "wks-008",
+          "userName": "erin",
+          "attributes": {
+            "fileHash": "44d88612fea8a8f36de82e1278abb02f",
+            "path": "C:\\Users\\erin\\Downloads\\eicar.com"
+          }
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "FILE_CREATED",
+          "severity": "LOW",
+          "sourceHost": "wks-008",
+          "attributes": {
+            "fileHash": "d41d8cd98f00b204e9800998ecf8427e"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1016",
+    "version": 1,
+    "name": "Security Audit Log Cleared",
+    "description": "A security or audit log was cleared, a common anti-forensics step.",
+    "severity": "HIGH",
+    "enabled": true,
+    "type": "SINGLE",
+    "condition": {
+      "eventTypes": [
+        "AUDIT_LOG_CLEARED",
+        "LOG_CLEARED"
+      ]
+    },
+    "mitre": [
+      {
+        "tactic": "Defense Evasion",
+        "techniqueId": "T1070.001",
+        "technique": "Indicator Removal: Clear Windows Event Logs"
+      }
+    ],
+    "falsePositives": [
+      "Documented maintenance that resets logs (should be pre-announced)"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "AUDIT_LOG_CLEARED",
+          "severity": "MEDIUM",
+          "sourceHost": "dc-01",
+          "userName": "admin.temp"
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "LOG_ROTATED",
+          "severity": "INFO",
+          "sourceHost": "dc-01"
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1017",
+    "version": 1,
+    "name": "Account Added to Privileged Group",
+    "description": "A user was added to a highly privileged group.",
+    "severity": "HIGH",
+    "enabled": true,
+    "type": "SINGLE",
+    "condition": {
+      "eventTypes": [
+        "GROUP_MEMBERSHIP_ADD"
+      ],
+      "attributeEquals": {
+        "group": [
+          "Domain Admins",
+          "Enterprise Admins",
+          "Administrators",
+          "sudo",
+          "wheel"
+        ]
+      }
+    },
+    "mitre": [
+      {
+        "tactic": "Persistence",
+        "techniqueId": "T1098",
+        "technique": "Account Manipulation"
+      },
+      {
+        "tactic": "Privilege Escalation",
+        "techniqueId": "T1098",
+        "technique": "Account Manipulation"
+      }
+    ],
+    "falsePositives": [
+      "Approved provisioning; correlate with a change ticket"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:01Z",
+          "eventType": "GROUP_MEMBERSHIP_ADD",
+          "severity": "MEDIUM",
+          "userName": "it.ops",
+          "attributes": {
+            "group": "Domain Admins",
+            "member": "frank"
+          }
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:00:02Z",
+          "eventType": "GROUP_MEMBERSHIP_ADD",
+          "severity": "MEDIUM",
+          "userName": "it.ops",
+          "attributes": {
+            "group": "Marketing",
+            "member": "frank"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "SIEM-1018",
+    "version": 1,
+    "name": "Burst of Administrative Changes",
+    "description": "Ten or more account or policy changes by one administrator within ten minutes.",
+    "severity": "MEDIUM",
+    "enabled": true,
+    "type": "THRESHOLD",
+    "suppressionSeconds": 1800,
+    "condition": {
+      "eventTypes": [
+        "ADMIN_ACTION",
+        "USER_CREATED",
+        "ROLE_ASSIGNED",
+        "PASSWORD_RESET",
+        "POLICY_CHANGE"
+      ]
+    },
+    "threshold": {
+      "groupBy": [
+        "userName"
+      ],
+      "windowSeconds": 600,
+      "count": 10
+    },
+    "mitre": [
+      {
+        "tactic": "Persistence",
+        "techniqueId": "T1136",
+        "technique": "Create Account"
+      },
+      {
+        "tactic": "Persistence",
+        "techniqueId": "T1098",
+        "technique": "Account Manipulation"
+      }
+    ],
+    "falsePositives": [
+      "Onboarding scripts and bulk administration",
+      "Identity sync jobs running under a named account"
+    ],
+    "examples": {
+      "match": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace",
+          "attributes": {
+            "target": "tmp0"
+          }
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:00:30Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace",
+          "attributes": {
+            "target": "tmp1"
+          }
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:01:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace",
+          "attributes": {
+            "target": "tmp2"
+          }
+        },
+        {
+          "id": "ex-3",
+          "timestamp": "2026-01-15T09:01:30Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace",
+          "attributes": {
+            "target": "tmp3"
+          }
+        },
+        {
+          "id": "ex-4",
+          "timestamp": "2026-01-15T09:02:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace",
+          "attributes": {
+            "target": "tmp4"
+          }
+        },
+        {
+          "id": "ex-5",
+          "timestamp": "2026-01-15T09:02:30Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace",
+          "attributes": {
+            "target": "tmp5"
+          }
+        },
+        {
+          "id": "ex-6",
+          "timestamp": "2026-01-15T09:03:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace",
+          "attributes": {
+            "target": "tmp6"
+          }
+        },
+        {
+          "id": "ex-7",
+          "timestamp": "2026-01-15T09:03:30Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace",
+          "attributes": {
+            "target": "tmp7"
+          }
+        },
+        {
+          "id": "ex-8",
+          "timestamp": "2026-01-15T09:04:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace",
+          "attributes": {
+            "target": "tmp8"
+          }
+        },
+        {
+          "id": "ex-9",
+          "timestamp": "2026-01-15T09:04:30Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace",
+          "attributes": {
+            "target": "tmp9"
+          }
+        }
+      ],
+      "noMatch": [
+        {
+          "id": "ex-0",
+          "timestamp": "2026-01-15T09:00:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace"
+        },
+        {
+          "id": "ex-1",
+          "timestamp": "2026-01-15T09:02:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace"
+        },
+        {
+          "id": "ex-2",
+          "timestamp": "2026-01-15T09:04:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace"
+        },
+        {
+          "id": "ex-3",
+          "timestamp": "2026-01-15T09:06:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace"
+        },
+        {
+          "id": "ex-4",
+          "timestamp": "2026-01-15T09:08:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace"
+        },
+        {
+          "id": "ex-5",
+          "timestamp": "2026-01-15T09:10:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace"
+        },
+        {
+          "id": "ex-6",
+          "timestamp": "2026-01-15T09:12:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace"
+        },
+        {
+          "id": "ex-7",
+          "timestamp": "2026-01-15T09:14:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace"
+        },
+        {
+          "id": "ex-8",
+          "timestamp": "2026-01-15T09:16:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace"
+        },
+        {
+          "id": "ex-9",
+          "timestamp": "2026-01-15T09:18:00Z",
+          "eventType": "USER_CREATED",
+          "severity": "INFO",
+          "userName": "admin.grace"
+        }
+      ]
     }
   }
 ]

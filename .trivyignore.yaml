@@ -1,0 +1,16 @@
+# Accepted Trivy findings. Every entry is scoped to specific paths and states why.
+misconfigurations:
+  # The chart's bundled dependency Deployments (PostgreSQL, Redis, Kafka, Keycloak, OpenSearch) are an
+  # optional dev/test convenience (`dependencies.enabled`); production clusters should use managed
+  # services or their vendors' hardened charts. Their upstream entrypoints switch users at start
+  # (gosu) or need writable data paths, so forcing a restricted context would break them.
+  - id: KSV-0014
+    paths: ["infrastructure/helm/siem/templates/deps-*.yaml"]
+  - id: KSV-0118
+    paths: ["infrastructure/helm/siem/templates/deps-*.yaml"]
+  - id: KSV-0012
+    paths: ["infrastructure/helm/siem/templates/deps-*.yaml"]
+  - id: KSV-0020
+    paths: ["infrastructure/helm/siem/templates/deps-*.yaml"]
+  - id: KSV-0021
+    paths: ["infrastructure/helm/siem/templates/deps-*.yaml"]

@@ -27,10 +27,18 @@ public class DetectionSummaryController {
         this.recentAlerts = recentAlerts;
     }
 
+    /**
+     * Counters are cumulative since this detection instance started (Micrometer counters can't reset);
+     * persisted totals come from the alert service.
+     */
     public record DetectionSummary(
             long eventsEvaluated,
             long alertsGenerated,
             long rulesEnabled,
+            long rulesTotal,
+            java.util.Map<String, Long> alertsByRule,
+            double detectionLatencyMeanMs,
+            double detectionLatencyP95Ms,
             List<SiemAlert> recentAlerts
     ) {
     }
@@ -41,6 +49,10 @@ public class DetectionSummaryController {
                 metrics.eventsEvaluated(),
                 metrics.alertsGenerated(),
                 ruleRepository.enabled().size(),
+                ruleRepository.all().size(),
+                metrics.alertsByRule(),
+                metrics.latencyMeanMillis(),
+                metrics.latencyP95Millis(),
                 recentAlerts.all()
         );
     }
@@ -48,6 +60,6 @@ public class DetectionSummaryController {
     @GetMapping("/alerts/{id}")
     public SiemAlert alertById(@PathVariable String id) {
         return recentAlerts.byId(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found: " + id));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alert not found"));
     }
 }

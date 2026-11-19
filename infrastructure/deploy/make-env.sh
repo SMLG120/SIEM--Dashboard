@@ -22,6 +22,9 @@ SIEM_TLS_MODE=auto
 POSTGRES_DB=siem
 POSTGRES_USER=siem_app
 POSTGRES_PASSWORD=$(gen)
+# Services connect as this non-superuser role (created on first database start).
+SIEM_DB_USER=siem_service
+SIEM_DB_PASSWORD=$(gen)
 KEYCLOAK_DB_PASSWORD=$(gen)
 REDIS_PASSWORD=$(gen)
 KEYCLOAK_ADMIN_USERNAME=admin

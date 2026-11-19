@@ -20,6 +20,8 @@ class ThreatIntelligenceSecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/threat-intel/**").hasAnyRole(
+                                SiemRoles.ADMIN, SiemRoles.SOC_MANAGER, SiemRoles.SECURITY_ANALYST, SiemRoles.VIEWER)
                         .requestMatchers("/api/threat-intel/**").hasAnyRole(SiemRoles.ADMIN, SiemRoles.SOC_MANAGER)
                         .anyRequest().authenticated()
                 )

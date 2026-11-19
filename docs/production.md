@@ -25,7 +25,7 @@ Any Ubuntu 24.04 VM with 8 vCPU / 16 GB RAM works; the reference is a Hetzner Cl
 4. Deploy. Secrets are generated **on the server** into `/opt/siem/.env` (mode 600) and never leave it:
 
    ```bash
-   infrastructure/deploy/deploy.sh <ip> [public-demo-password]
+   infrastructure/deploy/deploy.sh <ip> [public-demo-password] [git-ref]   # deploys a commit, never the working tree
    ```
 
 5. Load the demo data once the site responds. Run from the repo; variables you export take precedence over your local `.env`:
@@ -34,9 +34,14 @@ Any Ubuntu 24.04 VM with 8 vCPU / 16 GB RAM works; the reference is a Hetzner Cl
    export SIEM_PUBLIC_URL=https://siem.<ip-dashed>.sslip.io
    export KEYCLOAK_URL=$SIEM_PUBLIC_URL/auth GATEWAY_URL=$SIEM_PUBLIC_URL
    export SIEM_DEMO_PASSWORD="$(ssh siem@<ip> 'grep ^SIEM_DEMO_PASSWORD= /opt/siem/.env | cut -d= -f2')"
+   infrastructure/deploy/script-client.sh <ip> enable    # password-grant client is off in production
    scripts/ingest-demo-events.sh && scripts/seed-demo-workflow.sh
+   infrastructure/deploy/script-client.sh <ip> disable
    unset SIEM_DEMO_PASSWORD
    ```
+
+   Realms are imported only on Keycloak's first start. On a server deployed before v2, where
+   `siem-demo` was imported enabled, run `script-client.sh <ip> disable` once.
 
 ## Accounts
 

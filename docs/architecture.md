@@ -1,78 +1,105 @@
 # Architecture
 
-The platform is an event-driven set of Spring Boot services behind a single gateway. Events enter over HTTP, flow through Kafka to a rules engine, become alerts, and are correlated into incidents. PostgreSQL holds durable state, OpenSearch serves search, Redis backs gateway rate limiting, and Keycloak issues the OIDC tokens every service validates.
+The platform is a set of event-driven Spring Boot services behind a single gateway:
+
+1. Events enter over HTTP and are written to PostgreSQL together with an outbox row in one transaction.
+2. A relay publishes the outbox to Kafka.
+3. A rules engine turns events into alerts that carry evidence.
+4. Alerts are triaged and correlated into incidents.
+
+Every security-relevant change ends up in an append-only audit log. Other stores:
+
+- **PostgreSQL** holds durable state.
+- **OpenSearch** serves search.
+- **Redis** backs gateway rate limiting.
+- **Keycloak** issues the OIDC tokens that every service validates.
+
+## Vertical slice
+
+```text
+ POST /api/events ──► ingestion ──► siem_event + outbox (1 tx) ──► relay ──► Kafka siem.events
+                                                                              │
+          ┌──────────────────────────────┬───────────────────────────────────┼─────────────────┐
+          ▼                              ▼                                   ▼                 ▼
+  detection (rules engine)        threat-intel                         search            (DLT on poison
+  SINGLE / THRESHOLD / SEQUENCE   indicator match ─► siem_sighting      OpenSearch        records)
+  evidence + ATT&CK + version
+          │
+          ▼  Kafka siem.alerts (alert id = hash(rule, event|group))
+   ┌──────┴───────────────┐
+   ▼                      ▼
+ alert-service          incident-service
+ siem_alert (+history)  correlate by source IP (advisory lock), siem_incident_alert links
+ triage workflow        lifecycle + timeline
+   │                      │
+   ▼ siem.audit           ▼ siem.incidents (one record per timeline entry)
+   └──────────► audit-service ◄── siem.rules (rule changes, compacted)
+                siem_audit_log (append-only)
+
+ React console ──► gateway (OIDC, RBAC, rate limit, size limit, correlation id) ──► services
+```
 
 ## Services
 
-- API Gateway: central HTTP entry point, route owner, OIDC resource-server enforcement, and Redis-backed rate limiting (token bucket applied as a default filter on every route).
-- Auth Service: identity integration facade for Keycloak/OIDC.
-- Ingestion Service: event ingestion API (`POST /api/events`) and Kafka producer (`siem.events`).
-- Detection Service: Kafka consumer (`siem.events`), packaged rule evaluation, alert producer (`siem.alerts`), and rule-change consumer (`siem.rules`).
-- Alert Service: alert lifecycle API (`GET /api/alerts`, workflow, assign, notes) backed by `siem.alerts`.
-- Incident Service: Kafka consumer (`siem.alerts`) that correlates alerts into incidents; incident API (`/api/incidents`) with timeline, notes, and status lifecycle; publishes lifecycle events to `siem.incidents`.
-- Search Service: Kafka consumers for `siem.events` and `siem.alerts` that index documents into OpenSearch and serve full-text search and severity aggregations (`/api/search`).
-- Threat Intelligence Service: future indicator management and lookups.
-- Audit Service: future append-only audit API and event sink.
+| Service | Owns | Consumes | Produces |
+|---|---|---|---|
+| api-gateway | routing, edge RBAC, rate limiting, request-size limit, `X-Correlation-Id` | — | — |
+| ingestion | `siem_event`, `siem_outbox` | — | `siem.events` (via outbox relay) |
+| detection | rule catalogue (JSON + runtime changes) | `siem.events`, `siem.rules` | `siem.alerts`, `siem.rules` |
+| alert | `siem_alert`, `siem_alert_note`, `siem_alert_history` | `siem.alerts` | `siem.audit` |
+| incident | `siem_incident`, `siem_incident_alert` | `siem.alerts` | `siem.incidents` |
+| search | OpenSearch indices `siem-events`, `siem-alerts` | `siem.events`, `siem.alerts` | — |
+| threat-intelligence | `siem_indicator`, `siem_sighting` | `siem.events` | — |
+| audit | `siem_audit_log` | `siem.rules`, `siem.audit`, `siem.incidents` | — |
+| auth | Keycloak integration facade | — | — |
 
-## Event Flow
+Each service applies its own Flyway migrations with a separate history table (`flyway_history_<service>`) in the shared `siem` database. In production it connects as the non-superuser `siem_service` role.
 
-```text
-POST /api/events (ingestion-service)
-        |
-        v
-  Kafka siem.events
-        |
-        v
-  detection-service rules engine  ------>  Kafka siem.alerts
-        |                                      |        |
-        |                                      |        +--> incident-service
- GET /api/detection/summary            alert-service     (correlation engine)
- GET /api/rules                        (workflow API)          |
-                                                              v
-                                                       GitHub incidents API
-                                                       (status, notes, timeline)
+## Delivery guarantees
 
-  POST /api/rules/{id}/(enable|disable|severity) (detection-service)
-        |
-        v
-  Kafka siem.rules  ------>  every detection instance applies the change live
+- **Ingestion → Kafka:** transactional outbox. An accepted event is never lost, even if Kafka is down when it arrives.
+- **Consumers:** at-least-once. Every write is idempotent, so redelivery is safe:
+  - Deterministic alert IDs.
+  - `ON CONFLICT DO NOTHING` inserts.
+  - Sightings are unique per (indicator, event, field).
+  - Audit rows are unique per (topic, partition, offset).
+- **Poison records:** a record that can never succeed (unparseable, or failing validation) goes to `<topic>.DLT` after the shared error handler stops retrying. It does not block the partition.
+- **Workflow writes:** alert and incident transitions run in one database transaction with a `SELECT … FOR UPDATE` on the row. History and timeline entries commit with the change. Notifications to `siem.audit` and `siem.incidents` are sent *after* commit, on a best-effort basis.
 
-  Kafka siem.events / siem.alerts
-        |
-        v
-  search-service  ------>  OpenSearch (indices siem-events, siem-alerts)
-        |
-        v
-  GET /api/search/summary | /events?q= | /alerts?q=
-```
+## Detection engine
 
-## Edge Protection
+See [detection-rules.md](detection-rules.md). In summary:
 
-- `RequestRateLimiter` is a gateway `default-filters` entry, so every routed request is metered; the gateway's own `/actuator/*` endpoints are not routed and therefore not metered.
-- The `KeyResolver` keys the bucket on the authenticated principal name, falling back to a shared `anonymous` bucket for unauthenticated traffic.
-- The limiter is a Redis token bucket, so limits are shared across gateway replicas. Defaults: `SIEM_RATE_LIMIT_REPLENISH=20` requests/s, `SIEM_RATE_LIMIT_BURST=40`; responses carry `X-RateLimit-Replenish-Rate`, `X-RateLimit-Burst-Capacity`, `X-RateLimit-Requested-Tokens`, `X-RateLimit-Remaining`, and excess requests get `429`.
+- Rules are `SINGLE`, `THRESHOLD` (count, distinct, sum or periodicity) or `SEQUENCE`.
+- Correlation state is in memory and bounded:
+  - 10,000 groups per rule.
+  - 1,000 events per group.
+- Rule changes:
+  1. The detection service publishes the change to the compacted `siem.rules` topic.
+  2. Each instance applies it.
+  3. Each instance replays the topic from offset 0 on startup, de-duplicated by change ID.
 
-## Streaming Rule Updates
+## Edge protection (gateway)
 
-- `POST /api/rules/{id}/enable|disable|severity` applies the change to the local in-memory rule set, then publishes a `RuleChange` record to `siem.rules`.
-- Every detection instance consumes `siem.rules` (group `detection-rules`) and applies the same change, so toggles are consistent cluster-wide; consumers ignore their own already-applied state and unknown rule ids.
+- **Rate limiting:** a Redis token bucket per authenticated user, with a shared `anonymous` bucket.
+  - Defaults: 20 req/s, burst 40.
+  - Configured by `SIEM_RATE_LIMIT_REPLENISH` / `SIEM_RATE_LIMIT_BURST`.
+- **Request bodies:** above 2 MB they are rejected with `413` (`SIEM_MAX_REQUEST_SIZE`). Each service enforces the same limit again with a servlet filter.
+- **Correlation IDs:** `X-Correlation-Id` is accepted if it matches `[A-Za-z0-9._-]{8,64}`; otherwise the gateway generates one. It is echoed on every response, including errors.
+- **Actuator:** only `health`, `info` and `prometheus` are exposed. Everything else under `/actuator` is denied.
 
-## Incident Correlation
+## Data stores
 
-- Alerts are consumed from `siem.alerts` by the incident-service (`@KafkaListener`, group `incident-service`).
-- Unresolved alerts sharing a `sourceIp` are grouped into one incident; a new `sourceIp` (or an incident-store miss) creates a new incident.
-- Incident lifecycle: `OPEN -> INVESTIGATING -> CONTAINED -> RESOLVED -> CLOSED` (plus manual reopen for alerts via `RESOLVED -> OPEN`).
-- Every state change, assignment, note, and linked alert appends a `TimelineEntry`; notes and related alerts are first-class collections on the incident.
-- Incidents can be created manually via the API or UI and then linked to open alerts.
-- Alert lifecycle (`OPEN -> ACKNOWLEDGED -> INVESTIGATING -> RESOLVED` plus reopen) tracks assignment and analyst notes on the alert detail.
+- **PostgreSQL 16:** system of record. Event attributes and alert evidence/ATT&CK are stored as JSON columns. `siem_alert_history` and `siem_audit_log` reject `UPDATE`/`DELETE` through triggers.
+- **Kafka (KRaft, single broker locally):**
+  - `siem.events`, `siem.alerts`, `siem.incidents`, `siem.audit`, `siem.rules` (compacted, infinite retention).
+  - `*.DLT` topics, with 14-day retention.
+- **OpenSearch:** explicit mappings (`dynamic: false`, text + keyword). Queries use `simple_query_string`, so user input cannot run scripts or regex. `SIEM_SEARCH_STORAGE=memory` swaps in a bounded in-memory index.
+- **Redis:** gateway rate-limit buckets.
+- **Prometheus/Grafana:** every service exposes `/actuator/prometheus`. Detection adds per-rule alert counters and a latency timer (`siem_detection_latency`). Threat intel adds `siem_threat_intel_sightings_total`.
 
-## Data Stores
+## Known limits
 
-- PostgreSQL: durable write-behind storage. `ingestion-service` owns `siem_event`; `alert-service` owns `siem_alert` + `siem_alert_note`; `incident-service` owns `siem_incident` (child collections `related_alerts`, `timeline`, `notes` serialized into a `payload` JSON column). Each service applies its own idempotent `schema.sql` on startup against the shared `siem` database.
-- Redis: gateway rate-limit token buckets, shared across gateway replicas.
-- Kafka: event, alert, incident, and rule backbone (topics `siem.events`, `siem.alerts`, `siem.incidents`, `siem.rules`, 3 partitions each).
-- OpenSearch: search/aggregation index for the search service. Indices `siem-events` and `siem-alerts` are auto-created on first document; severity aggregations use the `severity.keyword` sub-field and free-text queries are wildcard `query_string` searches. `SIEM_SEARCH_STORAGE=memory` swaps in a bounded in-memory index for environments without OpenSearch.
-- Prometheus/Grafana: metric scraping and dashboards. Every service exposes `/actuator/prometheus` (public); detection publishes cumulative counters `siem_detection_events_evaluated_total` and `siem_detection_alerts_generated_total`. `infrastructure/prometheus/prometheus.yml` scrapes all nine services and relabels `job` into an `application` label for the provisioned Grafana dashboard.
-- In-memory stores: ingestion keeps a bounded recent-event window (1000); alert-service keeps a bounded alert window (1000); incident-service keeps a bounded incident window (100). These remain the low-latency read model and are rehydrated from PostgreSQL on startup (`*Hydrator` components listening for `ApplicationReadyEvent`), so lists survive service restarts.
-
-Every mutation writes through to the owning table before the API responds; Kafka replays are idempotent (insert if absent, silent update WHERE EXISTS).
+- Threshold and sequence rules are exact only with a single detection instance, or when events are partitioned by the grouping key. State is lost on restart.
+- The append-only triggers make tampering *evident* and stop the application from changing history. They do not stop the table owner from disabling them; real immutability needs WORM storage or export.
+- Kafka uses PLAINTEXT, and OpenSearch runs without its security plugin. Both are reachable only on the private Compose network (see [threat-model.md](threat-model.md)).

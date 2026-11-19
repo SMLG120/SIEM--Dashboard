@@ -1,9 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  apiDelete,
   apiGet,
   apiPatch,
   apiPost,
   type AlertDetail,
+  type AlertHistoryEntry,
+  type AlertPage,
+  type AlertStatus,
+  type AlertSummary,
+  type AuditEntry,
+  type Indicator,
+  type IndicatorType,
+  type IncidentNote,
+  type RuleChange,
+  type RuleTestResult,
+  type Sighting,
   type CreateIncidentInput,
   type DetectionRule,
   type DetectionSummary,
@@ -109,8 +121,10 @@ export function useUpdateAlertStatus() {
       id: string;
       action: "acknowledge" | "investigate" | "resolve" | "reopen";
     }) => apiPost<SiemAlert>(`/api/alerts/${id}/${action}`),
-    onSuccess: () => {
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      void queryClient.invalidateQueries({ queryKey: ["alert-search"] });
+      void queryClient.invalidateQueries({ queryKey: ["alert-summary"] });
     }
   });
 }
@@ -159,7 +173,8 @@ export function useUpdateIncident() {
 export function useAddIncidentNote(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (text: string) => apiPost<Incident>(`/api/incidents/${id}/notes`, { text }),
+    // The API returns the created note, not the incident.
+    mutationFn: (text: string) => apiPost<IncidentNote>(`/api/incidents/${id}/notes`, { text }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["incidents", id] });
     }
@@ -197,5 +212,130 @@ export function useSearchAlerts(query: string) {
     queryKey: ["search", "alerts", query],
     queryFn: () => apiGet<SearchHit[]>(`/api/search/alerts?q=${encodeURIComponent(query)}`),
     enabled: query.trim().length > 0
+  });
+}
+
+export type AlertFilters = {
+  status: AlertStatus[];
+  severity: EventSeverity[];
+  ruleId?: string;
+  sourceIp?: string;
+  assignedTo?: string;
+  sort: "created" | "severity";
+  page: number;
+  size: number;
+};
+
+export function alertSearchPath(f: AlertFilters) {
+  const params = new URLSearchParams();
+  f.status.forEach((s) => params.append("status", s));
+  f.severity.forEach((s) => params.append("severity", s));
+  if (f.ruleId) params.set("ruleId", f.ruleId);
+  if (f.sourceIp) params.set("sourceIp", f.sourceIp);
+  if (f.assignedTo) params.set("assignedTo", f.assignedTo);
+  params.set("sort", f.sort);
+  params.set("page", String(f.page));
+  params.set("size", String(f.size));
+  return `/api/alerts/search?${params.toString()}`;
+}
+
+export function useAlertSearch(filters: AlertFilters) {
+  return useQuery({
+    queryKey: ["alert-search", filters],
+    queryFn: () => apiGet<AlertPage>(alertSearchPath(filters)),
+    refetchInterval: 10_000,
+    placeholderData: (previous) => previous
+  });
+}
+
+export function useAlertSummary() {
+  return useQuery({
+    queryKey: ["alert-summary"],
+    queryFn: () => apiGet<AlertSummary>("/api/alerts/summary"),
+    refetchInterval: 10_000
+  });
+}
+
+export function useAlertHistory(id: string) {
+  return useQuery({
+    queryKey: ["alerts", id, "history"],
+    queryFn: () => apiGet<AlertHistoryEntry[]>(`/api/alerts/${id}/history`),
+    enabled: id.length > 0
+  });
+}
+
+export function useEvent(id: string | undefined) {
+  return useQuery({
+    queryKey: ["events", id],
+    queryFn: () => apiGet<SecurityEvent>(`/api/events/${id}`),
+    enabled: Boolean(id),
+    staleTime: Infinity // events are immutable
+  });
+}
+
+export function useAddAlertNote(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (text: string) => apiPost(`/api/alerts/${id}/notes`, { text }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["alerts", id] });
+    }
+  });
+}
+
+export function useRuleHistory(id: string | undefined) {
+  return useQuery({
+    queryKey: ["rules", id, "history"],
+    queryFn: () => apiGet<RuleChange[]>(`/api/rules/${id}/history`),
+    enabled: Boolean(id)
+  });
+}
+
+export function useRuleTest() {
+  return useMutation({
+    mutationFn: (body: { ruleId: string; events?: Partial<SecurityEvent>[] }) =>
+      apiPost<RuleTestResult>("/api/rules/test", body)
+  });
+}
+
+export function useIndicators() {
+  return useQuery({
+    queryKey: ["indicators"],
+    queryFn: () => apiGet<Indicator[]>("/api/threat-intel/indicators"),
+    refetchInterval: 30_000
+  });
+}
+
+export function useSightings() {
+  return useQuery({
+    queryKey: ["sightings"],
+    queryFn: () => apiGet<Sighting[]>("/api/threat-intel/sightings?limit=100"),
+    refetchInterval: 15_000
+  });
+}
+
+export function useCreateIndicator() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { type: IndicatorType; value: string; severity: EventSeverity; description?: string }) =>
+      apiPost<Indicator>("/api/threat-intel/indicators", input),
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: ["indicators"] })
+  });
+}
+
+export function useDeactivateIndicator() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiDelete(`/api/threat-intel/indicators/${id}`),
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: ["indicators"] })
+  });
+}
+
+export function useAuditLog(enabled: boolean) {
+  return useQuery({
+    queryKey: ["audit"],
+    queryFn: () => apiGet<AuditEntry[]>("/api/audit/events?limit=50"),
+    enabled,
+    refetchInterval: 30_000
   });
 }

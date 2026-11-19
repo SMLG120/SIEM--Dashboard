@@ -37,20 +37,26 @@ public class RuleChangeController {
     }
 
     @PostMapping("/severity")
-    public DetectionRule setSeverity(@PathVariable String id, @RequestBody SeverityRequest request,
+    public DetectionRule setSeverity(@PathVariable String id, @RequestBody(required = false) SeverityRequest request,
                                      @AuthenticationPrincipal Jwt jwt) {
         EventSeverity severity;
         try {
-            severity = EventSeverity.valueOf(request.severity().trim().toUpperCase());
+            severity = EventSeverity.valueOf(request.severity().trim().toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException | NullPointerException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown severity: " + request.severity());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown severity");
         }
         return change(id, new RuleChange(id, RuleChangeAction.SET_SEVERITY, severity, actor(jwt), Instant.now()));
     }
 
     private DetectionRule change(String id, RuleChange change) {
-        DetectionRule updated = ruleChangeService.applyAndPublish(change)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found: " + id));
+        DetectionRule updated;
+        try {
+            updated = ruleChangeService.applyAndPublish(change)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rule not found"));
+        } catch (IllegalStateException e) {
+            // The change log is unavailable; nothing was applied.
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Rule change could not be recorded; try again");
+        }
         log.info("AUDIT rule-change rule={} action={} severity={} actor={}",
                 change.ruleId(), change.action(), change.severity(), change.actor());
         return updated;

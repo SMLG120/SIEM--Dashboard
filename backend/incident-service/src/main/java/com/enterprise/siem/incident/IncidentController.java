@@ -5,7 +5,6 @@ import com.enterprise.siem.incident.model.Incident;
 import com.enterprise.siem.incident.model.IncidentNote;
 import com.enterprise.siem.incident.model.IncidentStatus;
 import com.enterprise.siem.incident.model.RelatedAlert;
-import com.enterprise.siem.incident.model.TimelineEntry;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,114 +21,75 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/incidents")
 public class IncidentController {
-    private final IncidentStore store;
+    static final int MAX_LIST = 200;
+
+    private final IncidentService service;
     private final IncidentRepository repository;
 
-    public IncidentController(IncidentStore store, IncidentRepository repository) {
-        this.store = store;
+    public IncidentController(IncidentService service, IncidentRepository repository) {
+        this.service = service;
         this.repository = repository;
     }
 
     @GetMapping
-    public List<Incident> listIncidents(@RequestParam(required = false) String status) {
-        List<Incident> incidents = store.all();
-        if (status == null || status.isBlank()) {
-            return incidents;
+    public List<Incident> listIncidents(@RequestParam(required = false) String status,
+                                        @RequestParam(defaultValue = "100") int limit) {
+        if (limit < 1 || limit > MAX_LIST) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be 1.." + MAX_LIST);
         }
-        IncidentStatus filter;
-        try {
-            filter = IncidentStatus.valueOf(status.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown incident status: " + status);
+        IncidentStatus filter = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                filter = IncidentStatus.valueOf(status.trim().toUpperCase(java.util.Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown incident status");
+            }
         }
-        return incidents.stream().filter(incident -> incident.status() == filter).toList();
+        return repository.search(filter, limit);
+    }
+
+    @GetMapping("/summary")
+    public java.util.Map<String, Long> summary() {
+        return repository.countByStatus();
     }
 
     @GetMapping("/{id}")
     public Incident incidentById(@PathVariable String id) {
-        return store.byId(id)
-                .orElseThrow(() -> new NotFoundException("Incident not found: " + id));
+        return service.findById(id).orElseThrow(() -> new NotFoundException("Incident not found"));
     }
 
     @PostMapping
     public Incident createIncident(@Valid @RequestBody CreateIncidentRequest request,
                                    @AuthenticationPrincipal Jwt jwt) {
-        EventSeverity severity = request.severity() == null ? EventSeverity.MEDIUM : request.severity();
-        Incident incident = Incident.create(
-                "INC-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
-                request.title(),
-                request.description() == null ? "" : request.description(),
-                severity
-        ).appendTimeline(new TimelineEntry(Instant.now(), actor(jwt), "INCIDENT_CREATED",
-                "Manually created by " + actor(jwt)));
-        repository.save(incident);
-        store.add(incident);
-        return incident;
+        return service.create(request.title(), request.description(), request.severity(), actor(jwt));
     }
 
     @PatchMapping("/{id}")
     public Incident updateIncident(@PathVariable String id,
                                    @Valid @RequestBody UpdateIncidentRequest request,
                                    @AuthenticationPrincipal Jwt jwt) {
-        String user = actor(jwt);
-        Incident updated = store.update(id, incident -> {
-            Incident next = incident;
-            if (request.title() != null && !request.title().isBlank()) {
-                next = next.withTitle(request.title());
-            }
-            if (request.description() != null) {
-                next = next.withDescription(request.description());
-            }
-            if (request.severity() != null && request.severity() != incident.severity()) {
-                next = next.withSeverity(request.severity())
-                        .appendTimeline(new TimelineEntry(Instant.now(), user, "SEVERITY_CHANGED",
-                                incident.severity() + " -> " + request.severity()));
-            }
-            if (request.status() != null && request.status() != incident.status()) {
-                next = next.withStatus(request.status())
-                        .appendTimeline(new TimelineEntry(Instant.now(), user, "STATUS_CHANGED",
-                                incident.status() + " -> " + request.status()));
-            }
-            if (request.assignedTo() != null && !request.assignedTo().isBlank()
-                    && !request.assignedTo().equals(incident.assignedTo())) {
-                next = next.withAssignedTo(request.assignedTo())
-                        .appendTimeline(new TimelineEntry(Instant.now(), user, "ASSIGNED",
-                                "Assigned to " + request.assignedTo()));
-            }
-            return next;
-        }, repository::save).orElseThrow(() -> new NotFoundException("Incident not found: " + id));
-        return updated;
+        try {
+            return service.update(id, request, actor(jwt));
+        } catch (IncidentWorkflow.InvalidTransitionException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+        }
     }
 
     @PostMapping("/{id}/notes")
     public IncidentNote addNote(@PathVariable String id,
                                 @Valid @RequestBody AddNoteRequest request,
                                 @AuthenticationPrincipal Jwt jwt) {
-        String user = actor(jwt);
-        IncidentNote note = new IncidentNote(
-                "NT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
-                user,
-                request.text(),
-                Instant.now()
-        );
-        store.update(id, incident -> incident
-                        .appendNote(note)
-                        .appendTimeline(new TimelineEntry(Instant.now(), user, "NOTE_ADDED", "Note by " + user)),
-                repository::save)
-                .orElseThrow(() -> new NotFoundException("Incident not found: " + id));
-        return note;
+        return service.addNote(id, request.text(), actor(jwt));
     }
 
     @PostMapping("/{id}/alerts")
     public Incident linkAlert(@PathVariable String id,
                               @Valid @RequestBody LinkAlertRequest request,
                               @AuthenticationPrincipal Jwt jwt) {
-        String user = actor(jwt);
         EventSeverity severity = request.severity() == null ? EventSeverity.MEDIUM : request.severity();
         RelatedAlert alert = new RelatedAlert(
                 request.alertId(),
@@ -141,15 +101,7 @@ public class IncidentController {
                 request.description(),
                 Instant.now()
         );
-        return store.update(id, incident -> {
-            if (incident.containsAlert(alert.id())) {
-                return incident;
-            }
-            return incident
-                    .appendAlert(alert)
-                    .appendTimeline(new TimelineEntry(Instant.now(), user, "ALERT_LINKED",
-                            "Linked alert " + alert.id()));
-        }, repository::save).orElseThrow(() -> new NotFoundException("Incident not found: " + id));
+        return service.linkAlert(id, alert, actor(jwt));
     }
 
     private String actor(Jwt jwt) {
@@ -157,6 +109,6 @@ public class IncidentController {
             return "system";
         }
         String username = jwt.getClaimAsString("preferred_username");
-        return username == null ? "system" : username;
+        return username == null ? jwt.getSubject() : username;
     }
 }

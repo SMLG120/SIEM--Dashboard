@@ -19,8 +19,19 @@ spec:
         app: {{ $name }}
         {{- include "siem.labels" $ | nindent 8 }}
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "siem.podSecurityContext" 10001 | nindent 8 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
       containers:
         - name: {{ $name }}
+          securityContext:
+            {{- include "siem.containerSecurityContext" $ | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           image: "{{ $.Values.image.repository }}-{{ $name }}:{{ $.Values.image.tag }}"
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
           ports:

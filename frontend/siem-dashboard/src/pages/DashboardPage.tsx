@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Activity, AlertTriangle, Bell, Siren } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { fetchServiceHealth, serviceEndpoints, type SecurityEvent, type SiemAlert } from "../api";
-import { useAlerts, useDetectionSummary, useEvents } from "../hooks";
+import { useAlertSummary, useAlerts, useDetectionSummary, useEvents } from "../hooks";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -35,6 +35,7 @@ export function DashboardPage() {
   const eventsQuery = useEvents();
   const alertsQuery = useAlerts();
   const summaryQuery = useDetectionSummary();
+  const alertSummary = useAlertSummary().data;
 
   const events = eventsQuery.data ?? [];
   const alerts = alertsQuery.data ?? [];
@@ -55,16 +56,33 @@ export function DashboardPage() {
   const restrictedCount = statuses.filter((item) => item.health === "restricted").length;
   const visibleCount = serviceEndpoints.length - restrictedCount;
 
-  const countBySeverity = (severity: string) => alerts.filter((a) => a.severity === severity).length;
+  // Persisted totals from the alert service; falls back to the recent list while loading.
+  const openBySeverity = (severity: string) =>
+    alertSummary
+      ? (alertSummary.openBySeverity[severity] ?? 0)
+      : alerts.filter((a) => a.severity === severity && a.status !== "RESOLVED").length;
   const metrics = [
-    { label: "Critical", value: String(countBySeverity("CRITICAL")), tone: "critical", icon: Siren },
-    { label: "High", value: String(countBySeverity("HIGH")), tone: "high", icon: AlertTriangle },
-    { label: "Medium", value: String(countBySeverity("MEDIUM")), tone: "medium", icon: Bell },
-    { label: "Events", value: String(events.length), tone: "low", icon: Activity }
+    { label: "Critical", value: String(openBySeverity("CRITICAL")), tone: "critical", icon: Siren, note: "open alerts" },
+    { label: "High", value: String(openBySeverity("HIGH")), tone: "high", icon: AlertTriangle, note: "open alerts" },
+    { label: "Medium", value: String(openBySeverity("MEDIUM")), tone: "medium", icon: Bell, note: "open alerts" },
+    {
+      label: "Alerts",
+      value: String(alertSummary?.total ?? alerts.length),
+      tone: "low",
+      icon: Activity,
+      note: `${alertSummary?.byStatus.RESOLVED ?? 0} resolved`
+    }
   ];
 
   const recentEvents = events.slice(0, 8);
-  const chartData = alertsByRule(alerts);
+  const chartData = alertSummary
+    ? alertSummary.topRules.slice(0, 8).map((r) => ({
+        rule: r.ruleId,
+        name: r.ruleName,
+        alerts: r.alerts,
+        severity: alertsByRule(alerts).find((x) => x.rule === r.ruleId)?.severity ?? "MEDIUM"
+      }))
+    : alertsByRule(alerts);
 
   return (
     <div className="page-stack">
@@ -76,7 +94,7 @@ export function DashboardPage() {
             </div>
             <span>{metric.label}</span>
             <strong>{metric.value}</strong>
-            <small>{metric.label === "Events" ? "ingested" : "alerts"}</small>
+            <small>{metric.note}</small>
           </article>
         ))}
       </section>

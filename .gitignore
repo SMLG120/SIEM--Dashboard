@@ -11,3 +11,6 @@ dist/
 .vscode/
 .mvn/wrapper/maven-wrapper.jar
 
+dist-e2e/
+test-results/
+playwright-report/

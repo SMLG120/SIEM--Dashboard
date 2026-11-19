@@ -5,9 +5,14 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:15432/siem}
     username: ${DB_USERNAME:siem_app}
     password: ${DB_PASSWORD:}
-  sql:
-    init:
-      mode: always
+  flyway:
+    # One history table per service: the services share the siem database but own separate tables.
+    table: flyway_history_ingestion
+    locations: classpath:db/migration/ingestion
+    # Existing databases predate Flyway. Baselining at 0 still runs V1, whose CREATE ... IF NOT EXISTS
+    # statements are no-ops on those databases and create the schema on fresh ones.
+    baseline-on-migrate: true
+    baseline-version: 0
   security:
     oauth2:
       resourceserver:
@@ -19,12 +24,27 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      # Wait for all in-sync replicas; idempotence stops producer retries from duplicating records.
+      acks: all
+      properties:
+        enable.idempotence: true
+        # Fail a send within ~10s instead of blocking the outbox relay for the 60s default.
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
     admin:
       auto-create: true
 
+  mvc:
+    problemdetails:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
 server:
   port: ${SERVER_PORT:8082}
+  shutdown: graceful
 
 management:
   endpoints:

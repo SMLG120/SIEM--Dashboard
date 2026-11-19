@@ -1,0 +1,84 @@
+name: Deploy
+
+# Manual, staged and gated: runs only when started by hand, only for a commit whose CI passed on
+# main, and only after the `production` environment's required reviewers approve. Nothing runs
+# until the repository owner creates that environment and its secrets (see docs/production.md).
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit SHA on main to deploy
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify commit passed CI on main
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      checks: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Commit is on main
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          [[ "$REF" =~ ^[0-9a-f]{40}$ ]] || { echo "ref must be a full commit SHA"; exit 1; }
+          git merge-base --is-ancestor "$REF" origin/main
+      - name: CI succeeded for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ inputs.ref }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/commits/${REF}/check-runs?per_page=100" \
+            --jq '[.check_runs[] | select(.name | test("^Backend|^Frontend|^Secret scan")) | .conclusion] | length > 0 and all(. == "success")' \
+            | grep -qx true
+
+  deploy:
+    name: Deploy to production
+    needs: verify
+    runs-on: ubuntu-24.04
+    environment:
+      name: production
+      url: ${{ vars.SIEM_PUBLIC_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Deploy commit
+        env:
+          DEPLOY_IP: ${{ secrets.DEPLOY_IP }}
+          DEMO_PASSWORD: ${{ vars.SIEM_PUBLIC_DEMO_PASSWORD || 'explore-the-siem' }}
+          REF: ${{ inputs.ref }}
+        run: infrastructure/deploy/deploy.sh "$DEPLOY_IP" "$DEMO_PASSWORD" "$REF"
+      - name: Smoke test the live URL
+        env:
+          URL: ${{ vars.SIEM_PUBLIC_URL }}
+        run: |
+          for _ in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/") && [ "$code" = 200 ] && break
+            sleep 10
+          done
+          curl -fsS "$URL/" -o /dev/null
+          # Unauthenticated API calls must be rejected, proving the gateway is up and enforcing auth.
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$URL/api/alerts")" = 401

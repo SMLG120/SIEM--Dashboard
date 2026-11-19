@@ -94,7 +94,7 @@
     {
       "clientId": "siem-demo",
       "name": "SIEM Demo/Test Script Client",
-      "enabled": true,
+      "enabled": __SIEM_SCRIPT_CLIENT_ENABLED__,
       "protocol": "openid-connect",
       "publicClient": true,
       "standardFlowEnabled": false,

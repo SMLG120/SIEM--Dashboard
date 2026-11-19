@@ -1,0 +1,15 @@
+# Layered on top of src/main/resources/application.yml (Spring loads config/ last), so tests run the
+# real production configuration with only these test-specific overrides.
+spring:
+  datasource:
+    # Real PostgreSQL in a throwaway container (Testcontainers JDBC URL), shared by all tests in the JVM.
+    url: jdbc:tc:postgresql:16-alpine:///siem
+    driver-class-name: org.testcontainers.jdbc.ContainerDatabaseDriver
+    username: test
+    password: test
+  kafka:
+    bootstrap-servers: localhost:1   # nothing listens here; context tests must not need a broker
+    admin:
+      auto-create: false
+    listener:
+      auto-startup: false

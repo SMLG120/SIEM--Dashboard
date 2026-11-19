@@ -1,3 +1,11 @@
+x-spring-healthcheck: &spring-healthcheck
+  # The JRE image has no curl; probe the actuator over bash's /dev/tcp instead.
+  test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/$$SERVER_PORT && printf \"GET /actuator/health HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3 && timeout 5 cat <&3 | grep -q UP'"]
+  interval: 15s
+  timeout: 10s
+  retries: 5
+  start_period: 90s
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -5,10 +13,13 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      SIEM_DB_USER: ${SIEM_DB_USER:-siem_service}
+      SIEM_DB_PASSWORD: ${SIEM_DB_PASSWORD:-}
     ports:
       - "127.0.0.1:${SIEM_POSTGRES_PORT:-15432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init-app-role.sh:/docker-entrypoint-initdb.d/20-app-role.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
@@ -45,7 +56,7 @@ services:
       SIEM_FRONTEND_ORIGIN: http://localhost:${SIEM_FRONTEND_PORT:-15173}
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - mkdir -p /opt/keycloak/data/import && sed -e "s|__SIEM_DEMO_PASSWORD__|$$SIEM_DEMO_PASSWORD|g" -e "s|__SIEM_PUBLIC_DEMO_PASSWORD__|$$SIEM_PUBLIC_DEMO_PASSWORD|g" -e "s|__SIEM_FRONTEND_ORIGIN__|$$SIEM_FRONTEND_ORIGIN|g" /opt/keycloak/data/import-template/enterprise-siem-realm.json.template > /opt/keycloak/data/import/enterprise-siem-realm.json && exec /opt/keycloak/bin/kc.sh start-dev --import-realm
+      - mkdir -p /opt/keycloak/data/import && sed -e "s|__SIEM_DEMO_PASSWORD__|$$SIEM_DEMO_PASSWORD|g" -e "s|__SIEM_PUBLIC_DEMO_PASSWORD__|$$SIEM_PUBLIC_DEMO_PASSWORD|g" -e "s|__SIEM_FRONTEND_ORIGIN__|$$SIEM_FRONTEND_ORIGIN|g" -e "s|__SIEM_SCRIPT_CLIENT_ENABLED__|true|g" /opt/keycloak/data/import-template/enterprise-siem-realm.json.template > /opt/keycloak/data/import/enterprise-siem-realm.json && exec /opt/keycloak/bin/kc.sh start-dev --import-realm
     ports:
       - "127.0.0.1:${SIEM_KEYCLOAK_PORT:-18088}:8080"
     depends_on:
@@ -153,24 +164,25 @@ services:
       keycloak:
         condition: service_started
       auth-service:
-        condition: service_started
+        condition: service_healthy
       ingestion-service:
-        condition: service_started
+        condition: service_healthy
       detection-service:
-        condition: service_started
+        condition: service_healthy
       alert-service:
-        condition: service_started
+        condition: service_healthy
       incident-service:
-        condition: service_started
+        condition: service_healthy
       threat-intelligence-service:
-        condition: service_started
+        condition: service_healthy
       audit-service:
-        condition: service_started
+        condition: service_healthy
       search-service:
-        condition: service_started
+        condition: service_healthy
 
   auth-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -185,6 +197,7 @@ services:
 
   ingestion-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -196,8 +209,9 @@ services:
       SERVER_PORT: 8082
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-siem}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-siem_app}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # Least-privilege service role when configured; falls back to the bootstrap role (v1 setups).
+      SPRING_DATASOURCE_USERNAME: ${SIEM_DB_USER:-${POSTGRES_USER:-siem_app}}
+      SPRING_DATASOURCE_PASSWORD: ${SIEM_DB_PASSWORD:-${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:18088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     depends_on:
@@ -210,6 +224,7 @@ services:
 
   detection-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -230,6 +245,7 @@ services:
 
   alert-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -241,8 +257,9 @@ services:
       SERVER_PORT: 8084
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-siem}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-siem_app}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # Least-privilege service role when configured; falls back to the bootstrap role (v1 setups).
+      SPRING_DATASOURCE_USERNAME: ${SIEM_DB_USER:-${POSTGRES_USER:-siem_app}}
+      SPRING_DATASOURCE_PASSWORD: ${SIEM_DB_PASSWORD:-${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:18088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     depends_on:
@@ -255,6 +272,7 @@ services:
 
   incident-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -266,8 +284,9 @@ services:
       SERVER_PORT: 8085
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-siem}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-siem_app}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # Least-privilege service role when configured; falls back to the bootstrap role (v1 setups).
+      SPRING_DATASOURCE_USERNAME: ${SIEM_DB_USER:-${POSTGRES_USER:-siem_app}}
+      SPRING_DATASOURCE_PASSWORD: ${SIEM_DB_PASSWORD:-${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:18088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     depends_on:
@@ -278,6 +297,7 @@ services:
 
   threat-intelligence-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -287,13 +307,25 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Xss512k"
       SERVER_PORT: 8086
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-siem}
+      # Least-privilege service role when configured; falls back to the bootstrap role (v1 setups).
+      SPRING_DATASOURCE_USERNAME: ${SIEM_DB_USER:-${POSTGRES_USER:-siem_app}}
+      SPRING_DATASOURCE_PASSWORD: ${SIEM_DB_PASSWORD:-${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}}
+      SIEM_THREAT_INTEL_SEED_DEMO: ${SIEM_THREAT_INTEL_SEED_DEMO:-true}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:18088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     depends_on:
-      - keycloak
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
 
   audit-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile
@@ -303,13 +335,24 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -Xss512k"
       SERVER_PORT: 8087
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-siem}
+      # Least-privilege service role when configured; falls back to the bootstrap role (v1 setups).
+      SPRING_DATASOURCE_USERNAME: ${SIEM_DB_USER:-${POSTGRES_USER:-siem_app}}
+      SPRING_DATASOURCE_PASSWORD: ${SIEM_DB_PASSWORD:-${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:18088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
     depends_on:
-      - keycloak
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
 
   search-service:
     mem_limit: 448m
+    healthcheck: *spring-healthcheck
     build:
       context: .
       dockerfile: infrastructure/docker/spring-service.Dockerfile

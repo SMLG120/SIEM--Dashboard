@@ -76,9 +76,11 @@ services:
       KC_PROXY_HEADERS: xforwarded
       SIEM_FRONTEND_ORIGIN: ${SIEM_PUBLIC_URL}
     command:
-      # Same realm template as local, but password reset is turned off (there is no real SMTP relay).
+      # Same realm template as local, except: password reset is off (no SMTP relay) and the
+      # password-grant script client `siem-demo` is imported disabled. Enable it only while seeding,
+      # with infrastructure/deploy/script-client.sh.
       - >-
-        mkdir -p /opt/keycloak/data/import && sed -e "s|__SIEM_DEMO_PASSWORD__|$$SIEM_DEMO_PASSWORD|g" -e "s|__SIEM_PUBLIC_DEMO_PASSWORD__|$$SIEM_PUBLIC_DEMO_PASSWORD|g" -e "s|__SIEM_FRONTEND_ORIGIN__|$$SIEM_FRONTEND_ORIGIN|g" -e 's|"resetPasswordAllowed": true|"resetPasswordAllowed": false|' /opt/keycloak/data/import-template/enterprise-siem-realm.json.template > /opt/keycloak/data/import/enterprise-siem-realm.json && exec /opt/keycloak/bin/kc.sh start --import-realm
+        mkdir -p /opt/keycloak/data/import && sed -e "s|__SIEM_DEMO_PASSWORD__|$$SIEM_DEMO_PASSWORD|g" -e "s|__SIEM_PUBLIC_DEMO_PASSWORD__|$$SIEM_PUBLIC_DEMO_PASSWORD|g" -e "s|__SIEM_FRONTEND_ORIGIN__|$$SIEM_FRONTEND_ORIGIN|g" -e "s|__SIEM_SCRIPT_CLIENT_ENABLED__|false|g" -e 's|"resetPasswordAllowed": true|"resetPasswordAllowed": false|' /opt/keycloak/data/import-template/enterprise-siem-realm.json.template > /opt/keycloak/data/import/enterprise-siem-realm.json && exec /opt/keycloak/bin/kc.sh start --import-realm
 
   api-gateway:
     restart: unless-stopped
