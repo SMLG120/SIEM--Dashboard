@@ -30,7 +30,13 @@ rsync -az --delete \
 echo ">>> Ensuring production .env exists (secrets are generated on the server)"
 ssh "${REMOTE}" "cd /opt/siem && bash infrastructure/deploy/make-env.sh '${HOST}' '${DEMO_PASSWORD}'"
 
-echo ">>> Building and starting the stack (first build takes several minutes)"
-ssh "${REMOTE}" "cd /opt/siem && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build --remove-orphans"
+COMPOSE="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+echo ">>> Building images one at a time (first build takes several minutes)"
+# Compose builds every image in parallel by default: nine Maven JVMs at once exhaust an 8 GB server.
+# Sequential builds keep peak memory at one build on top of the running stack.
+ssh "${REMOTE}" "cd /opt/siem && for s in \$(${COMPOSE} config --services); do ${COMPOSE} build \"\$s\" || exit 1; done"
+
+echo ">>> Starting the stack"
+ssh "${REMOTE}" "cd /opt/siem && ${COMPOSE} up -d --remove-orphans"
 
 echo ">>> Done: https://${HOST} at ${SHA:0:12}  (demo login: demo / ${DEMO_PASSWORD})"

@@ -22,10 +22,20 @@ services:
       - ./infrastructure/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
+    healthcheck:
+      # Caddy's admin API listens on localhost:2019 inside the container only.
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:2019/config/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    # Wait for real readiness, so the first visitors never hit a 502 while Java services boot.
     depends_on:
-      - frontend
-      - api-gateway
-      - keycloak
+      frontend:
+        condition: service_healthy
+      api-gateway:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
 
   postgres:
     restart: unless-stopped

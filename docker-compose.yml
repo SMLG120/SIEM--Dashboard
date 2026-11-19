@@ -63,6 +63,14 @@ services:
       - mailpit
     volumes:
       - ./infrastructure/keycloak:/opt/keycloak/data/import-template:ro
+    healthcheck:
+      # No curl in the Keycloak image. Readiness is on the management port (9000), under
+      # KC_HTTP_RELATIVE_PATH (/auth in production, empty locally).
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9000 && printf \"GET $${KC_HTTP_RELATIVE_PATH:-}/health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n\" >&3 && timeout 5 cat <&3 | grep -q UP'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   mailpit:
     # Local mail catcher: receives Keycloak emails (password reset, verification) so nothing leaves the machine.
@@ -83,6 +91,8 @@ services:
       DISABLE_SECURITY_PLUGIN: "true"
       DISABLE_INSTALL_DEMO_CONFIG: "true"
       OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
     ports:
       - "127.0.0.1:${SIEM_OPENSEARCH_PORT:-19200}:9200"
     healthcheck:
@@ -156,6 +166,7 @@ services:
       SIEM_ALLOWED_ORIGIN: http://localhost:${SIEM_FRONTEND_PORT:-15173}
       OIDC_ISSUER_URI: ${OIDC_ISSUER_URI:-http://localhost:18088/realms/enterprise-siem}
       OIDC_JWK_SET_URI: ${OIDC_JWK_SET_URI:-http://keycloak:8080/realms/enterprise-siem/protocol/openid-connect/certs}
+    healthcheck: *spring-healthcheck
     ports:
       - "127.0.0.1:${SIEM_GATEWAY_PORT:-18080}:8080"
     depends_on:
@@ -388,6 +399,11 @@ services:
         VITE_KEYCLOAK_CLIENT_ID: siem-dashboard
     ports:
       - "127.0.0.1:${SIEM_FRONTEND_PORT:-15173}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     depends_on:
       - api-gateway
 
@@ -398,6 +414,11 @@ services:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "127.0.0.1:${SIEM_PROMETHEUS_PORT:-19090}:9090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:9090/-/ready || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     depends_on:
       - api-gateway
 
@@ -414,6 +435,12 @@ services:
       - ./infrastructure/grafana/dashboards:/var/lib/grafana/dashboards:ro
     ports:
       - "127.0.0.1:${SIEM_GRAFANA_PORT:-13000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     depends_on:
       - prometheus
 
@@ -421,3 +448,4 @@ volumes:
   postgres-data:
   redis-data:
   kafka-data:
+  opensearch-data:
