@@ -57,7 +57,7 @@ Each rule includes `version`, `type` (`SINGLE`/`THRESHOLD`/`SEQUENCE`), `conditi
 
 Roles: `ADMIN`, `SOC_MANAGER`, `SECURITY_ANALYST`, `VIEWER`.
 
-- `GET /api/detection/summary` — counters since start (`eventsEvaluated`, `alertsGenerated`, `rulesEnabled`, `rulesTotal`, `alertsByRule`, `detectionLatencyMeanMs`, `detectionLatencyP95Ms`) plus recent alerts.
+- `GET /api/detection/summary` — counters since start (`eventsEvaluated`, `alertsGenerated`, `rulesEnabled`, `rulesTotal`, `alertsByRule`, `detectionLatencyMeanMs`, `detectionLatencyP95Ms`) plus recent alerts. Latency runs from event timestamp to alert publication. The mean covers everything since start; the p95 covers a sliding window of about 2 minutes and is `0` when no alert fired in it.
 - `GET /api/detection/alerts/{id}` — a recent detection-generated alert.
 
 ## Alerts

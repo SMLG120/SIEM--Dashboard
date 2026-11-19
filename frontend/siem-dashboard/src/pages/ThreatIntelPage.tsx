@@ -39,7 +39,6 @@ export function ThreatIntelPage({ auth }: { auth: AuthState }) {
                 <span>Value</span>
                 <span>Severity</span>
                 <span>Source</span>
-                <span />
               </div>
             ) : null}
             {list.map((i) => (
@@ -59,8 +58,8 @@ export function ThreatIntelPage({ auth }: { auth: AuthState }) {
                     {i.source === "SIMULATED_DEMO" ? "simulated" : i.source.toLowerCase()}
                   </span>
                   <small className="muted-block">{i.createdBy}</small>
+                  {manage ? <DeactivateButton id={i.id} value={i.value} /> : null}
                 </span>
-                <span>{manage ? <DeactivateButton id={i.id} value={i.value} /> : null}</span>
               </div>
             ))}
           </div>

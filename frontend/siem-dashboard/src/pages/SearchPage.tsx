@@ -57,7 +57,7 @@ function SearchPanel({
     <article className="panel">
       <div className="panel-heading">
         <h3>{title}</h3>
-        <span>{hits.length} results</span>
+        <span>{hits.length} {hits.length === 1 ? "result" : "results"}</span>
       </div>
       <input
         className="search-input"

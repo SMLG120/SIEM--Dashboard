@@ -52,8 +52,12 @@ export function PlatformPage({ auth }: { auth: AuthState }) {
         </article>
         <article className="metric-card medium">
           <span>Detection latency</span>
-          <strong>{s?.detectionLatencyP95Ms != null ? `${s.detectionLatencyP95Ms.toFixed(1)} ms` : "-"}</strong>
-          <small>p95 · mean {s?.detectionLatencyMeanMs?.toFixed(1) ?? "-"} ms</small>
+          <strong>{s?.detectionLatencyMeanMs != null ? `${s.detectionLatencyMeanMs.toFixed(1)} ms` : "-"}</strong>
+          {/* p95 is a sliding ~2 min window (Micrometer), so it reads 0 once alerts stop; the mean is since start. */}
+          <small>
+            mean since start · p95 last 2 min{" "}
+            {s?.detectionLatencyP95Ms ? `${s.detectionLatencyP95Ms.toFixed(1)} ms` : "idle"}
+          </small>
         </article>
         <article className="metric-card critical">
           <span>Rules enabled</span>
@@ -76,29 +80,6 @@ export function PlatformPage({ auth }: { auth: AuthState }) {
               <span className={`status-dot ${item.health ?? "pending"}`} aria-hidden="true" />
               <strong>{item.label}</strong>
               <small>{item.health === "restricted" ? "up (not visible to your role)" : (item.health ?? "checking…")}</small>
-            </div>
-          ))}
-        </div>
-      </article>
-
-      <article className="panel">
-        <div className="panel-heading">
-          <h2>Event backbone</h2>
-          <span>Kafka topics</span>
-        </div>
-        <div className="data-table">
-          <div className="data-row data-head topic-grid">
-            <span>Topic</span>
-            <span>Produced by</span>
-            <span>Consumed by</span>
-          </div>
-          {topics.map((t) => (
-            <div className="data-row topic-grid" key={t.topic}>
-              <span>
-                <code>{t.topic}</code>
-              </span>
-              <span>{t.producedBy}</span>
-              <span>{t.consumedBy}</span>
             </div>
           ))}
         </div>
@@ -133,6 +114,29 @@ export function PlatformPage({ auth }: { auth: AuthState }) {
           </div>
         </article>
       ) : null}
+
+      <article className="panel">
+        <div className="panel-heading">
+          <h2>Event backbone</h2>
+          <span>Kafka topics</span>
+        </div>
+        <div className="data-table">
+          <div className="data-row data-head topic-grid">
+            <span>Topic</span>
+            <span>Produced by</span>
+            <span>Consumed by</span>
+          </div>
+          {topics.map((t) => (
+            <div className="data-row topic-grid" key={t.topic}>
+              <span>
+                <code>{t.topic}</code>
+              </span>
+              <span>{t.producedBy}</span>
+              <span>{t.consumedBy}</span>
+            </div>
+          ))}
+        </div>
+      </article>
 
       {isLocal() ? (
         <article className="panel">

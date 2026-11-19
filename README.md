@@ -39,11 +39,15 @@ Security events are ingested through an authenticated gateway, streamed over Kaf
 
 ## Screenshots
 
-| Alert triage | Incident investigation |
+Captured from a live local stack (real Keycloak sign-in, Kafka, PostgreSQL) after ingesting `sample-data/` and working one investigation through the console. All telemetry and indicators are simulated.
+
+| Alert triage, with detection evidence | Incident investigation |
 |---|---|
-| ![Alerts](docs/screenshots/alerts.png) | ![Incident detail](docs/screenshots/incident.png) |
-| **Detection rules** | **Search & analytics** |
-| ![Detection rules](docs/screenshots/rules.png) | ![Search](docs/screenshots/search.png) |
+| ![Alert drawer showing why SIEM-1009 fired](docs/screenshots/alerts.png) | ![Contained incident with timeline and notes](docs/screenshots/incident.png) |
+| **Detection rules and ATT&CK mapping** | **Search** |
+| ![Rule catalogue and detail](docs/screenshots/rules.png) | ![Event and alert search](docs/screenshots/search.png) |
+| **Threat intel: curated indicators and sightings** | **Platform health and audit trail** |
+| ![Indicators and sightings](docs/screenshots/threat-intel.png) | ![Service health and append-only audit trail](docs/screenshots/platform.png) |
 
 ## Architecture
 
